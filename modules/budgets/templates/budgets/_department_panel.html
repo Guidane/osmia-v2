@@ -1,0 +1,19 @@
+{% load humanize %}
+{% if budgets %}
+<table class="list">
+  <thead><tr><th>Budget</th><th class="num">Amount</th><th class="num">Spent</th><th>Used</th></tr></thead>
+  <tbody>
+  {% for b in budgets %}
+    <tr class="{% if b.over %}warn{% endif %}">
+      <td><a href="{{ b.get_absolute_url }}">{{ b }}</a></td>
+      <td class="num">{{ b.amount|floatformat:2|intcomma }}</td>
+      <td class="num">{{ b.spent|floatformat:2|intcomma }}</td>
+      <td>{% include "budgets/_bar.html" %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="muted">No budgets for this department.</p>
+{% endif %}
+{% if perms.budgets.add_budget %}<p><a href="{% url 'budgets:create' %}">+ New budget</a></p>{% endif %}

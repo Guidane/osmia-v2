@@ -1,0 +1,14 @@
+{
+  "label": "users",
+  "title": "Users",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "People and access.",
+  "icon": "👥",
+  "sequence": 10,
+  "depends": [],
+  "menu": [
+    {"label": "All users", "url": "users:list"},
+    {"label": "New user", "url": "users:create"}
+  ]
+}

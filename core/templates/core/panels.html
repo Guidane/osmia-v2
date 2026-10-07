@@ -1,0 +1,7 @@
+{% comment %}Renders Panels contributed by other modules through a hook.{% endcomment %}
+{% for p in panels %}
+  <section class="card panel">
+    <h2>{{ p.title }}</h2>
+    {{ p.html }}
+  </section>
+{% endfor %}

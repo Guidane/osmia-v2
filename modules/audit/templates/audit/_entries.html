@@ -1,0 +1,26 @@
+{% load audit_tags %}
+<table class="list log-table">
+  <thead><tr><th>When</th>{% if show_module %}<th>Module</th>{% endif %}{% if not hide_record %}<th>Record</th>{% endif %}<th>What</th><th>Changes</th><th>By</th><th>Chain</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr class="{% if e.triggered_by %}chained{% endif %}">
+      <td class="nowrap" title="{{ e.created_at|date:'Y-m-d H:i:s' }}">{{ e.created_at|date:"Y-m-d H:i" }}</td>
+      {% if show_module %}<td class="nowrap"><a href="{% url 'audit:list' %}?module={{ e.module }}">{{ e.module|module_title }}</a></td>{% endif %}
+      {% if not hide_record %}<td>{% if e.object_url and e.action != 'deleted' %}<a href="{{ e.object_url }}">{{ e.object_label }}</a>{% else %}{{ e.object_label }}{% endif %}
+        {% if e.history_url %}<a class="muted history-link" href="{{ e.history_url }}" title="Full history">⟲</a>{% endif %}</td>{% endif %}
+      <td class="nowrap"><span class="badge {% if e.action == 'created' %}in{% elif e.action == 'deleted' %}out{% endif %}">{{ e.get_action_display }}</span>
+        {% if e.item_type %}<br><small class="muted">{{ e.item_type }}: {{ e.item_label }}</small>{% endif %}</td>
+      <td class="changes">
+        {% for c in e.changes|slice:":8" %}
+          <div><span class="field">{{ c.field }}</span>{% if e.action == 'changed' %}: <span class="old">{{ c.old|default:"—" }}</span> → {% else %}: {% endif %}<span class="new">{{ c.new|default:"—" }}</span></div>
+        {% empty %}<span class="muted">—</span>{% endfor %}
+        {% if e.changes|length > 8 %}<small class="muted">… {{ e.changes|length|add:"-8" }} more</small>{% endif %}
+      </td>
+      <td class="nowrap">{% if e.user %}<a href="{% url 'audit:list' %}?user={{ e.user_id }}">{{ e.user }}</a>{% elif e.source == 'demo data' %}<span class="muted">demo data</span>{% else %}<span class="muted">system</span>{% endif %}</td>
+      <td class="nowrap">{% chain_tag e %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">Nothing logged yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

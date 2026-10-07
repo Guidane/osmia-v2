@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load osmia_images osmia_static %}
+{% block content %}
+<div class="toolbar">
+  <h1>Stock</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Part, description or location code">
+    <select name="location" onchange="this.form.submit()">
+      <option value="">All locations</option>
+      <option value="none" {% if request.GET.location == 'none' %}selected{% endif %}>No location (not put away)</option>
+      {% for l in locations %}<option value="{{ l.pk }}" {% if request.GET.location == l.pk|stringformat:'s' %}selected{% endif %}>{% if l.code %}{{ l.code }} · {% endif %}{{ l.full_path }}</option>{% endfor %}
+    </select>
+    <label class="check"><input type="checkbox" name="low" value="1" {% if request.GET.low %}checked{% endif %} onchange="this.form.submit()"> Low stock only</label>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn primary" href="{% url 'stock:move_create' %}">New move</a>
+</div>
+{% if low_parts and not request.GET.low %}
+  <p class="flash">{{ low_parts|length }} part{{ low_parts|length|pluralize }} at or below the reorder level: <a href="?low=1">show</a>.</p>
+{% endif %}
+{% include "stock/_move_bar.html" %}
+<table class="list" data-select>
+  <thead><tr><th class="select-cell"><input type="checkbox" data-select-all aria-label="Select all rows"></th><th>Part</th><th>Description</th><th>Location</th><th class="num">Quantity</th><th class="num">Value</th></tr></thead>
+  <tbody>
+  {% for item in object_list %}
+    <tr>
+      <td class="select-cell"><input type="checkbox" class="row-select" name="items" value="{{ item.pk }}" form="transfer-form" aria-label="Select {{ item }}"></td>
+      <td>{% cover_thumb item.part 28 %} <a href="{{ item.part.get_absolute_url }}">{{ item.part.part_number }}</a></td>
+      <td>{{ item.part.name }}</td>
+      <td>{% if item.location %}<a href="{{ item.location.get_absolute_url }}" title="{{ item.location.full_path }}">{% if item.location.code %}<code>{{ item.location.code }}</code> {% endif %}{{ item.location.name }}</a>{% else %}<span class="muted">No location</span>{% endif %}</td>
+      <td class="num">{{ item.quantity|floatformat:"-2" }} {{ item.part.unit }}</td>
+      <td class="num">{{ item.value|floatformat:2 }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No stock{% if request.GET %} matches{% endif %}. Receive parts with "New move", or by receiving an order.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<script src="{% versioned_static 'core/select_rows.js' %}"></script>
+{% endblock %}

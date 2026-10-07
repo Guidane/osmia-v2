@@ -1,0 +1,1 @@
+<span class="badge {% if a.status == 'manufacturing' %}in_progress{% elif a.status == 'completed' %}done{% else %}off{% endif %}">{{ a.get_status_display }}</span>

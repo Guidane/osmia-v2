@@ -1,0 +1,17 @@
+{
+  "label": "tasks",
+  "title": "Tasks",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Plan and track work across the team.",
+  "icon": "✅",
+  "sequence": 20,
+  "depends": ["users", "departments"],
+  "menu": [
+    {"label": "Board", "url": "tasks:board"},
+    {"label": "List", "url": "tasks:list"},
+    {"label": "Gantt", "url": "tasks:gantt"},
+    {"label": "My tasks", "url": "tasks:mine"},
+    {"label": "New task", "url": "tasks:create"}
+  ]
+}

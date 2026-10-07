@@ -1,0 +1,4 @@
+<select name="department" onchange="this.form.submit()">
+  <option value="">All departments</option>
+  {% for d in departments %}<option value="{{ d.pk }}" {% if d == picked %}selected{% endif %}>{{ d }}</option>{% endfor %}
+</select>

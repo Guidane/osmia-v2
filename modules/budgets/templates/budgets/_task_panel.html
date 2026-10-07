@@ -1,0 +1,19 @@
+{% load humanize %}
+{% if budget %}
+  <p><a href="{{ budget.get_absolute_url }}"><strong>{{ budget }}</strong></a></p>
+  <p class="muted">This task has cost {{ task_cost|floatformat:2|intcomma }}. Budget: {{ budget.spent|floatformat:2|intcomma }} of {{ budget.amount|floatformat:2|intcomma }} spent.</p>
+  {% include "budgets/_bar.html" with b=budget %}
+  {% if mismatch %}<p class="overdue">The budget belongs to {{ budget.department|default:"no department" }}, but the task is in {{ task.department|default:"no department" }}.</p>{% endif %}
+{% else %}
+  <p class="muted">Not charged to a budget.</p>
+{% endif %}
+{% if task.department %}
+  <form method="post" action="{% url 'budgets:link_task' task.pk %}" class="inline-form">
+    {% csrf_token %}
+    {{ form.budget }}
+    <button class="btn small">{% if budget %}Change{% else %}Charge{% endif %}</button>
+  </form>
+  {% if not form.budget.field.queryset.exists %}<p class="muted">{{ task.department }} has no budgets yet.</p>{% endif %}
+{% else %}
+  <p class="muted">Give the task a department to charge it to one of that department's budgets.</p>
+{% endif %}

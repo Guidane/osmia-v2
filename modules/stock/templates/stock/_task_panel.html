@@ -1,0 +1,2 @@
+{% include "stock/_moves_table.html" with hide_task=True %}
+<p><a href="{% url 'stock:move_create' %}?task={{ task.pk }}&next={{ task.get_absolute_url|urlencode }}">+ Issue materials for this task</a></p>

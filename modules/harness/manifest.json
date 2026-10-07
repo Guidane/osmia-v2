@@ -1,0 +1,14 @@
+{
+  "label": "harness",
+  "title": "Harness",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Wire harness designer: connect device connectors pin by pin.",
+  "icon": "🧵",
+  "sequence": 46,
+  "depends": ["users", "devices"],
+  "menu": [
+    {"label": "Projects", "url": "harness:list"},
+    {"label": "Designer", "url": "harness:designer"}
+  ]
+}

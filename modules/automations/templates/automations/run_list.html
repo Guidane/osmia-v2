@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Run log</h1>
+  <form method="get">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All runs</option>
+      <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>Failed only</option>
+      <option value="ok" {% if request.GET.status == 'ok' %}selected{% endif %}>Done only</option>
+    </select>
+  </form>
+</div>
+{% include "automations/_run_table.html" with runs=object_list show_rule=True %}
+{% endblock %}

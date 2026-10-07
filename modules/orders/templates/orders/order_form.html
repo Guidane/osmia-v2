@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+      {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+    </div>
+    <fieldset>
+      <legend>Lines</legend>
+      {{ formset.management_form }}
+      {{ formset.non_form_errors }}
+      <table class="list compact">
+        <thead><tr><th>Part</th><th>Quantity</th><th>Unit price</th><th></th></tr></thead>
+        <tbody id="line-rows">
+        {% for f in formset %}{% with part=f.part_label %}
+          <tr data-part="{{ part.pk|default:'' }}">
+            <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+              {% if part %}<a href="{{ part.get_absolute_url }}" target="_blank">{{ part.part_number }}</a> <span class="muted">{{ part.name }}</span>{% else %}<span class="muted">—</span>{% endif %}
+              {{ f.part.errors }}{{ f.non_field_errors }}</td>
+            <td>{{ f.quantity }}{{ f.quantity.errors }}</td>
+            <td>{{ f.unit_price }}{{ f.unit_price.errors }}</td>
+            <td>{% if f.instance.pk %}<label class="check">{{ f.DELETE }} Remove</label>{% else %}<button type="button" class="btn small remove line-remove" title="Remove this line">✕</button>{% endif %}</td>
+          </tr>
+        {% endwith %}{% empty %}
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted lines-empty" {% if formset.forms %}hidden{% endif %}>No lines yet: add parts from the list below.</p>
+      <template id="line-template">
+        <tr data-part="">
+          <td>{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}<span class="line-part"></span></td>
+          <td>{{ formset.empty_form.quantity }}</td>
+          <td>{{ formset.empty_form.unit_price }}</td>
+          <td><button type="button" class="btn small remove line-remove" title="Remove this line">✕</button></td>
+        </tr>
+      </template>
+    </fieldset>
+
+    <h2>Add parts</h2>
+    {% include "inventory/_part_picker.html" with picker_id="order-picker" add_label="Add to order" %}
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{% if order.pk %}{{ order.get_absolute_url }}{% else %}{% url 'orders:list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  // Budget in two steps: the sub-budget list shows only the chosen parent's sub-budgets.
+  (function () {
+    const parent = document.getElementById('id_parent_budget');
+    const sub = document.getElementById('id_budget');
+    if (!parent || !sub) return;
+    function filter() {
+      for (const opt of sub.options) {
+        if (!opt.value) continue;  // "---------": charge the parent itself
+        const show = opt.dataset.parent === parent.value;
+        opt.hidden = !show;
+        opt.disabled = !show;
+      }
+      if (sub.selectedOptions[0] && sub.selectedOptions[0].disabled) sub.value = '';
+      sub.disabled = !parent.value;
+    }
+    parent.addEventListener('change', filter);
+    filter();
+  })();
+
+  // "Add to order" in the picker: a new line for the part (or one more of it).
+  (function () {
+    const total = document.getElementById('id_lines-TOTAL_FORMS');
+    const rows = document.getElementById('line-rows');
+    const template = document.getElementById('line-template').innerHTML;
+    const empty = document.querySelector('.lines-empty');
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    document.getElementById('order-picker').addEventListener('part-picked', e => {
+      const part = e.detail;
+      const existing = [...rows.children].find(tr => tr.dataset.part === String(part.id) && !tr.querySelector('input[name$="-DELETE"]:checked'));
+      if (existing) {
+        const qty = existing.querySelector('input[name$="-quantity"]');
+        qty.value = (parseFloat(qty.value) || 0) + 1;
+        qty.focus();
+        return;
+      }
+      rows.insertAdjacentHTML('beforeend', template.replace(/__prefix__/g, total.value));
+      total.value = Number(total.value) + 1;
+      const tr = rows.lastElementChild;
+      tr.dataset.part = part.id;
+      tr.querySelector('input[name$="-part"]').value = part.id;
+      tr.querySelector('.line-part').innerHTML = `<a href="${esc(part.url)}" target="_blank">${esc(part.part_number)}</a> <span class="muted">${esc(part.name)}</span>`;
+      const qty = tr.querySelector('input[name$="-quantity"]');
+      qty.value = 1;
+      qty.focus();
+      qty.select();
+      empty.hidden = true;
+    });
+    rows.addEventListener('click', e => {
+      const btn = e.target.closest('.line-remove');
+      if (!btn) return;
+      // The form keeps its number, so the others stay in step; with no part it's simply left out.
+      const tr = btn.closest('tr');
+      tr.querySelectorAll('input').forEach(i => { i.value = ''; });
+      tr.hidden = true;
+      tr.dataset.part = '';
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Parts</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Number, description, attribute…">
+    <select name="category" onchange="this.form.submit()">
+      <option value="">All categories</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if request.GET.category == c.pk|stringformat:'s' %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <label><input type="checkbox" name="archived" value="1" onchange="this.form.submit()" {% if request.GET.archived %}checked{% endif %}> Show archived</label>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn primary" href="{% url 'inventory:part_create' %}">New part</a>
+</div>
+
+<table class="list">
+  <thead><tr><th>Part number</th><th>Description</th><th>Category</th><th>Unit</th><th>Goes with</th></tr></thead>
+  <tbody>
+  {% for p in object_list %}
+    <tr>
+      <td>{% cover_thumb p 28 %} <a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a></td>
+      <td>{{ p.name }} {% if not p.is_active %}<span class="badge off">Archived</span>{% endif %}</td>
+      <td>{{ p.category|default:"—" }}</td>
+      <td>{{ p.unit }}</td>
+      <td class="muted">{% for m in p.mates_with.all %}{% if forloop.first %}mates with {% endif %}{{ m.part_number }}{% if not forloop.last %}, {% endif %}{% endfor %}{% for f in p.fits.all %}{% if forloop.first %}{% if p.mates_with.all %}; {% endif %}accepts {% endif %}{{ f.part_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No parts.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="muted">Quantities and locations are in <a href="{% url 'stock:list' %}">Stock</a>.</p>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load osmia_static %}
+{% block content %}
+<div class="toolbar">
+  <h1>Budgets</h1>
+  <input type="search" class="tree-filter" placeholder="Filter…" aria-label="Filter budgets" data-tree-filter="budgets">
+  <button type="button" class="btn small" data-tree-expand="budgets">Expand all</button>
+  <button type="button" class="btn small" data-tree-collapse="budgets">Collapse all</button>
+  {% if perms.budgets.add_budget %}<a class="btn primary" href="{% url 'budgets:create' %}">New budget</a>{% endif %}
+</div>
+{% include "budgets/_tree_table.html" with rows=object_list tree="budgets" show_path=True %}
+<p class="muted">Spent includes sub-budgets. Spending comes from tasks charged to a budget, e.g. parts issued to them.</p>
+<script src="{% versioned_static 'core/tree_table.js' %}"></script>
+{% endblock %}

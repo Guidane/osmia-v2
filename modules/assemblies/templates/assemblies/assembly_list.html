@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Assemblies</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Search name or version">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">All types</option>
+      {% for value, label in types %}<option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn primary" href="{% url 'assemblies:create' %}">New assembly</a>
+</div>
+
+<table class="list">
+  <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Version</th><th class="num">Revision</th><th class="num">Components</th></tr></thead>
+  <tbody>
+  {% for a in object_list %}
+    <tr>
+      <td>{% cover_thumb a 28 %} <a href="{{ a.get_absolute_url }}">{{ a.name }}</a></td>
+      <td>{{ a.get_assembly_type_display }}</td>
+      <td>{% include "assemblies/_status.html" %}</td>
+      <td>{{ a.version }}</td>
+      <td class="num">{{ a.revision }}</td>
+      <td class="num">{{ a.component_count }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No assemblies.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

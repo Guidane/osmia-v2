@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% load static osmia_static %}
+{% comment %}
+  The Wire Harness Designer, adapted from the stand-alone app. The markup below
+  is kept as close to the original as possible so designer.js works unchanged.
+{% endcomment %}
+{% block title %}Harness designer · Osmia{% endblock %}
+{% block main_class %}content-full{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% versioned_static 'harness/designer.css' %}">
+<div id="harness-app"
+     data-api="{{ api_base }}"
+     data-csrf="{{ csrf_token }}"
+     data-users-url="{{ users_url }}"
+     data-devices-url="{{ devices_url }}"
+     data-images-url="{{ images_url }}">
+<header id="harness-topbar">
+    <div class="brand">Wire Harness Designer</div>
+    <input id="project-name" type="text" value="Untitled Harness">
+    <span id="project-version-badge" class="version-badge hidden"></span>
+    <button id="btn-new-project">New</button>
+    <button id="btn-save-project">Save</button>
+    <select id="project-select"><option value="">Load project…</option></select>
+    <button id="btn-project-versions" class="hidden">Versions</button>
+    <a id="btn-project-images" class="hidden" href="#" target="_blank" title="Photos of this project's harnesses">🖼 Images ↗</a>
+    <button id="btn-delete-project">Delete</button>
+    <button id="btn-signal-rules">Signal Rules</button>
+    <button id="btn-users" title="Opens Osmia's Users page">Users ↗</button>
+    <span id="status-msg"></span>
+  </header>
+
+  <div id="workspace">
+    <div id="library-bar">
+      <label>Place device
+        <select id="device-select"><option value="">Choose a device to place…</option></select>
+      </label>
+      <a id="btn-open-device" class="hidden" href="#" target="_blank" title="Edit the device, its connectors and pins in the Devices module">Open in Devices ↗</a>
+      <a id="btn-new-device" href="{{ devices_create_url }}" target="_blank" title="Devices are created in the Devices module">+ New device ↗</a>
+      <button id="btn-reload-devices" type="button" title="Reload devices after changing them in the Devices module">↻</button>
+      <span class="bar-sep"></span>
+      <label>Harness <select id="harness-select"></select></label>
+      <span class="bar-sep"></span>
+      <button id="btn-center-view" type="button" title="Centre the view on the harnesses (scroll to zoom, drag empty space to move)">⌖ Center</button>
+      <button id="zoom-level" type="button" title="Zoom level: click for 100%">100%</button>
+      <span id="selection-bar"></span>
+    </div>
+
+    <div id="main">
+      <div id="canvas-wrap">
+        <canvas id="canvas"></canvas>
+        <div id="connector-tip" class="hidden" role="group" aria-label="Connector actions">
+          <span id="connector-tip-title"></span>
+          <button id="btn-loopback-pending" type="button" title="Wire pins of this connector to each other">🔁 Loop back</button>
+          <button id="btn-create-extension" type="button" title="A new device with exactly this connector's pinout, and a harness to it">➕ Create extension</button>
+          <span class="tip-hint">or click another connector to wire it</span>
+        </div>
+        <button id="pinout-hint" class="hidden" type="button" title="Open this harness's pinout table">📋 Show pinout</button>
+      </div>
+    </div>
+
+    <div id="drawer" class="modal hidden">
+      <div class="modal-box pinout-box">
+      <div id="drawer-header">
+        <span id="drawer-title"></span>
+        <span class="drawer-actions">
+          <button id="btn-order-parts" type="button" title="A draft order in Orders with this harness's parts">🧾 Order parts</button>
+          <button id="btn-export-csv" type="button" title="Download this harness's wire list as CSV">⬇ Export CSV</button>
+          <button id="btn-close-drawer">✕</button>
+        </span>
+      </div>
+      <div id="drawer-body">
+        <table id="conn-table">
+          <thead>
+            <tr>
+              <th>Owner</th>
+              <th title="Wire verified at this end">✓</th>
+              <th title="The pin's tags (Tag 1–4); ↪ = taken from the unit on the other side of an interconnect">Tags</th>
+              <th class="pin-head">Pin</th>
+              <th class="pin-head">Pin</th>
+              <th title="The pin's tags (Tag 1–4); ↪ = taken from the unit on the other side of an interconnect">Tags</th>
+              <th title="Wire verified at this end">✓</th>
+              <th>Owner</th>
+              <th title="The pins' cable set, from Devices">Set</th>
+              <th>Color</th>
+              <th>AWG</th>
+              <th>Length</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="conn-table-body"></tbody>
+        </table>
+        <div id="add-conn-row"></div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connect Modal: pick the pins of each wire, pin to pin -->
+  <div id="connect-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="connect-modal-title">Connect</h3>
+      <p class="hint">Pick a pin on each side for every wire. Pins that are already wired aren't offered. A wire whose signals the Signal Rules don't allow turns red.</p>
+      <div id="connect-unit-row" class="hidden">
+        <label>Destination <select id="connect-unit-select"></select></label>
+      </div>
+      <table id="connect-pick-table" class="pick-table">
+        <thead>
+          <tr>
+            <th colspan="2">From</th>
+            <th></th>
+            <th colspan="2">To</th>
+            <th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th>Signal</th><th>Pin</th>
+            <th></th>
+            <th>Pin</th><th>Signal</th>
+          </tr>
+        </thead>
+        <tbody id="connect-pick-body"></tbody>
+      </table>
+      <div class="add-set-row">
+        <button id="btn-add-wire" type="button">+ Add wire</button>
+        <button id="btn-auto-match" type="button" title="Adds a wire for every free pin pair whose signals match, e.g. PWR to PWR">Match remaining pins by signal</button>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-connect" type="button">Cancel</button>
+        <button id="btn-create-connect" type="button">Create Harness</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal Rules Modal: which signal types are allowed to wire together (global) -->
+  <div id="signal-rules-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Signal Connection Rules</h3>
+      <p class="hint">Define which signal types are allowed to connect to each other, e.g. PWR ↔ PWR, GND ↔ GND, RX ↔ TX. A signal name with no rule listed here is unrestricted. These rules apply everywhere a pin can be picked for a new wire.</p>
+      <div id="signal-rule-rows"></div>
+      <button id="btn-add-rule" type="button">+ Add Rule</button>
+      <div class="modal-actions">
+        <button id="btn-cancel-rules" type="button">Cancel</button>
+        <button id="btn-save-rules" type="button">Save Rules</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Modal: no auth, just a name registry for device ownership / verification -->
+  <div id="users-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Users</h3>
+      <p class="hint">No password — just a name registry, used to assign who's responsible for a device and to track who has verified a harness.</p>
+      <div id="user-rows"></div>
+      <button id="btn-add-user" type="button">+ Add User</button>
+      <div class="modal-actions">
+        <button id="btn-cancel-users" type="button">Cancel</button>
+        <button id="btn-save-users" type="button">Save Users</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Versions Modal: shared by devices and projects -->
+  <div id="versions-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="versions-modal-title">Versions</h3>
+      <div id="versions-list"></div>
+      <div class="modal-actions">
+        <button id="btn-close-versions" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order parts: one plug per connector end of the harness -->
+  <div id="order-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="order-modal-title">Order parts</h3>
+      <p class="hint">The harness needs a plug at each connector it goes to. Pick the part for each plug (it's remembered in the harness);
+        without one, the device connector's own part is suggested, and its mating part may differ. This makes a draft order in Orders:
+        add the supplier and budget there before placing it.</p>
+      <table class="pick-table">
+        <thead><tr><th>Connector</th><th>Plug</th><th>Part</th><th>Qty</th></tr></thead>
+        <tbody id="order-rows"></tbody>
+      </table>
+      <div class="modal-actions">
+        <button id="btn-cancel-order" type="button">Cancel</button>
+        <button id="btn-create-order" type="button">Create order</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="part-list"></datalist>
+  <datalist id="wire-colors">
+    <option value="Black"><option value="Red"><option value="Blue"><option value="Green"><option value="Yellow">
+    <option value="White"><option value="Brown"><option value="Orange"><option value="Violet"><option value="Grey">
+    <option value="Pink"><option value="Green/Yellow">
+  </datalist>
+
+  <datalist id="awg-list">
+    <option value="24 AWG">
+    <option value="22 AWG">
+    <option value="20 AWG">
+    <option value="18 AWG">
+    <option value="16 AWG">
+    <option value="14 AWG">
+    <option value="12 AWG">
+    <option value="10 AWG">
+  </datalist>
+
+  </div>
+<script src="{% versioned_static 'harness/designer.js' %}"></script>
+{% endblock %}

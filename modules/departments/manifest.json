@@ -1,0 +1,14 @@
+{
+  "label": "departments",
+  "title": "Departments",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "The organisation, as nested departments.",
+  "icon": "🏢",
+  "sequence": 11,
+  "depends": ["users"],
+  "menu": [
+    {"label": "Departments", "url": "departments:list"},
+    {"label": "New department", "url": "departments:create"}
+  ]
+}

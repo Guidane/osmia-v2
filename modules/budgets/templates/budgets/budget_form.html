@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+
+    <fieldset>
+      <legend>Sub-budgets</legend>
+      <p class="muted">Budgets directly under this one. A sub-budget without a department gets this budget's. Open a sub-budget to edit what's under it.</p>
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}<div class="errorlist">{{ formset.non_form_errors }}</div>{% endif %}
+      <table class="list compact">
+        <thead><tr><th>Name</th><th>Number</th><th class="num">Amount</th><th>Department</th>{% if can_delete_subs %}<th>Delete</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for f in formset %}
+          {% if f.instance.pk or can_add_subs %}
+          <tr>
+            <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.name }}{{ f.name.errors }}{{ f.non_field_errors }}</td>
+            <td>{{ f.budget_number }}</td>
+            <td class="num">{{ f.amount }}{{ f.amount.errors }}</td>
+            <td>{{ f.department }}</td>
+            {% if can_delete_subs %}<td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>{% endif %}
+          </tr>
+          {% endif %}
+        {% empty %}
+          <tr><td colspan="5" class="muted">None.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if can_add_subs %}<p class="muted">Save to get more blank rows.</p>{% endif %}
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      {% if cancel_url %}<a class="btn" href="{{ cancel_url }}">Cancel</a>{% else %}<a class="btn" href="{% url 'budgets:list' %}">Cancel</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

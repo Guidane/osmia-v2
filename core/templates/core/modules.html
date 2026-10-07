@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Modules · Osmia{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>⚙ Modules</h1>
+  <span class="muted">Osmia {{ osmia_version }}</span>
+</div>
+
+{% if not can_change %}
+  <div class="flash">Osmia runs its modules straight from the source in <code>modules/</code> (<code>OSMIA_DEV_MODULES</code>),
+    so they can't be installed or removed here. Start it without that setting to manage modules from this page.</div>
+{% endif %}
+
+{% if pending %}
+  <div class="flash">
+    <strong>Waiting to be applied:</strong>
+    {% for op in pending.ops %}{{ op.op|capfirst }} {{ op.title|default:op.label }}{% if op.version %} {{ op.version }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    {% if supervised %}Osmia restarts to apply it; <a href="{% url 'core:modules_applying' %}">follow it here</a>.
+    {% else %}Stop Osmia and start it again to apply it.{% endif %}
+    <form method="post" action="{% url 'core:modules_cancel' %}" class="inline-form">{% csrf_token %}<button class="btn small">Cancel this change</button></form>
+  </div>
+{% endif %}
+
+<section class="card panel">
+  <h2>Installed</h2>
+  <table class="list">
+    <thead><tr><th>Module</th><th>Version</th><th>Needs</th><th>Needed by</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    <tr>
+      <td>👥 <strong>Users</strong> <span class="muted">users</span><br><small class="muted">People and access. Built in.</small></td>
+      <td>{{ osmia_version }}</td><td>—</td><td class="muted">every module</td>
+      <td><span class="badge done">On</span></td><td></td>
+    </tr>
+    {% for r in rows %}
+      <tr id="module-{{ r.label }}">
+        <td>{{ r.entry.icon|default:"📦" }} <strong>{{ r.entry.title }}</strong> <span class="muted">{{ r.label }}</span>
+          {% if r.entry.description %}<br><small class="muted">{{ r.entry.description }}</small>{% endif %}</td>
+        <td>{{ r.entry.version }}{% if r.update %}<br><span class="badge warn">{{ r.update }} available</span>{% endif %}</td>
+        <td>{{ r.entry.depends|join:", "|default:"—" }}</td>
+        <td>{{ r.needed_by|join:", "|default:"—" }}</td>
+        <td>
+          {% if not r.entry.enabled %}<span class="badge off">Off</span>
+          {% elif r.loaded %}<span class="badge done">On</span>
+          {% else %}<span class="badge warn" title="Installed and on, but not running now (safe mode, or waiting for a restart)">Not running</span>{% endif %}
+        </td>
+        <td class="actions-cell">
+          {% if can_change %}
+            {% if r.update %}
+              <form method="post" action="{% url 'core:modules_install' %}" class="inline">{% csrf_token %}
+                <input type="hidden" name="module" value="{{ r.label }}"><button class="btn small primary">Update to {{ r.update }}</button></form>
+            {% endif %}
+            {% if r.entry.enabled %}<a class="btn small" href="{% url 'core:modules_change' r.label 'disable' %}">Disable</a>
+            {% else %}<a class="btn small" href="{% url 'core:modules_change' r.label 'enable' %}">Enable</a>{% endif %}
+            {% if r.previous %}<a class="btn small" href="{% url 'core:modules_change' r.label 'rollback' %}">Roll back to {{ r.previous.version }}</a>{% endif %}
+            <a class="btn small" href="{% url 'core:modules_change' r.label 'uninstall' %}">Uninstall</a>
+          {% endif %}
+          <a class="btn small" href="{% url 'core:modules_download' r.label %}" title="Download as .zip, e.g. for another Osmia">⬇ .zip</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if can_change and updates|length > 1 %}
+    <form method="post" action="{% url 'core:modules_update_all' %}" class="inline-form">{% csrf_token %}
+      <button class="btn primary">Update all ({{ updates|length }})</button></form>
+  {% endif %}
+</section>
+
+{% if can_change %}
+<div class="grid-2">
+  <section class="card panel">
+    <h2>Available</h2>
+    {% if available %}
+      <p class="muted">Modules that come with Osmia. A module's own needs are installed with it.</p>
+      <form method="post" action="{% url 'core:modules_install' %}">
+        {% csrf_token %}
+        <ul class="plain module-checks">
+          {% for m in available %}
+            <li><label><input type="checkbox" name="module" value="{{ m.label }}"> {{ m.icon|default:"📦" }} <strong>{{ m.title }}</strong> {{ m.version }}
+              <span class="muted">— {{ m.description }}{% if m.depends %} Needs {{ m.depends|join:", " }}.{% endif %}</span></label></li>
+          {% endfor %}
+        </ul>
+        <div class="inline-form">
+          <label><input type="checkbox" name="demo" value="1"> with demo data</label>
+          <button class="btn primary">Install</button>
+        </div>
+      </form>
+    {% else %}
+      <p class="muted">Every module that comes with Osmia is installed.</p>
+    {% endif %}
+  </section>
+
+  <section class="card panel">
+    <h2>Upload a module</h2>
+    <p class="muted">A module <code>.zip</code>: a Django app with a <code>manifest.json</code>. Uploading a newer version of an installed module updates it.</p>
+    <form method="post" action="{% url 'core:modules_upload' %}" enctype="multipart/form-data" class="form">
+      {% csrf_token %}
+      <div class="field"><input type="file" name="package" accept=".zip,application/zip" required></div>
+      <div class="field"><label><input type="checkbox" name="demo" value="1"> Load its demo data (new modules only)</label></div>
+      <button class="btn primary">Upload and install</button>
+    </form>
+  </section>
+</div>
+
+<section class="card panel" id="recent">
+  <h2>Recent changes</h2>
+  <p class="muted">The database is backed up before every change (in <code>{{ data_dir }}\backups</code>), and a change that fails is undone completely.</p>
+  <table class="list">
+    <thead><tr><th>When</th><th>Change</th><th>By</th><th>Result</th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr{% if r.id == highlight %} class="{% if r.ok %}highlight{% else %}warn{% endif %}"{% endif %}>
+        <td>{{ r.finished_at|slice:":16"|cut:"T" }}</td>
+        <td>{{ r.changes|join:"; " }}
+          <details><summary class="muted">Details</summary><pre class="log">{{ r.log }}</pre></details></td>
+        <td>{{ r.requested_by|default:"—" }}</td>
+        <td>{% if r.ok %}<span class="badge done">Done</span>{% else %}<span class="badge high">Failed, undone</span>{% endif %}
+          <small class="muted">{{ r.seconds }} s</small></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">No changes yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

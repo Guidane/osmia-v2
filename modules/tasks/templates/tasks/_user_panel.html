@@ -1,0 +1,2 @@
+{% include "tasks/_table.html" with hide_assignee=True %}
+<p><a href="{% url 'tasks:create' %}?assignee={{ person.pk }}">+ Assign a task to {{ person.first_name|default:person.username }}</a></p>

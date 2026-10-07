@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  {% if part_count %}
+    <h1>{{ location.full_path }} can't be deleted</h1>
+    <p>{{ part_count }} part{{ part_count|pluralize }} {% if part_count == 1 %}is{% else %}are{% endif %} kept here{% if sub_count %} or in its sub-locations{% endif %}.
+      Move {% if part_count == 1 %}it{% else %}them{% endif %} to another location first (select them on the location's page), then delete this one.</p>
+    <table class="list">
+      <thead><tr><th>Part</th><th>Location</th></tr></thead>
+      <tbody>
+      {% for item in items %}{% with p=item.part %}
+        <tr><td><a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}</td>
+            <td>{% if item.location.code %}<code>{{ item.location.code }}</code> {% endif %}{{ item.location.name }} · {{ item.quantity|floatformat:"-2" }} {{ p.unit }}</td></tr>
+      {% endwith %}{% endfor %}
+      {% if part_count > items|length %}<tr><td colspan="2" class="muted">… and {{ part_count|add:"-50" }} more</td></tr>{% endif %}
+      </tbody>
+    </table>
+    <div class="actions"><a class="btn" href="{{ location.get_absolute_url }}">Back</a></div>
+  {% else %}
+    <h1>Delete {{ location.full_path }}?</h1>
+    {% if sub_count %}<p>Its <strong>{{ sub_count }} sub-location{{ sub_count|pluralize }}</strong> will be deleted too. None of them hold any stock.</p>{% endif %}
+    <p>This cannot be undone.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn danger">Delete{% if sub_count %} {{ sub_count|add:1 }} locations{% endif %}</button>
+        <a class="btn" href="{{ location.get_absolute_url }}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

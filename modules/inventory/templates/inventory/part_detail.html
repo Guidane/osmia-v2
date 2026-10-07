@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ part.part_number }} {% if part.name %}<span class="muted">· {{ part.name }}</span>{% endif %}
+    {% if not part.is_active %}<span class="badge off">Archived</span>{% endif %}</h1>
+  <a class="btn" href="{% url 'inventory:part_edit' part.pk %}">Edit</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    {# Panels contributed by other modules: stock (where it is, moves), assemblies that use it, ... #}
+    {% include "core/panels.html" %}
+  </div>
+  <div>
+    {% image_gallery part %}
+    <section class="card">
+      <dl class="props">
+        <dt>Category</dt><dd>{{ part.category|default:"—" }}</dd>
+        <dt>Unit</dt><dd>{{ part.unit }}</dd>
+      </dl>
+    </section>
+
+    <section class="card panel">
+      <h2>Attributes</h2>
+      {% if attribute_values %}
+        <dl class="props">
+          {% for v in attribute_values %}<dt>{{ v.attribute.name }}</dt><dd>{{ v.value }}</dd>{% endfor %}
+        </dl>
+      {% elif part.category %}
+        <p class="muted">No values yet. <a href="{% url 'inventory:part_edit' part.pk %}">Fill them in</a>.</p>
+      {% else %}
+        <p class="muted">Pick a category to get attributes.</p>
+      {% endif %}
+    </section>
+
+    <section class="card panel">
+      <h2>Goes with</h2>
+      <dl class="props part-links">
+        <dt title="Parts it connects to, both ways">Mates with</dt>
+        <dd>{% for p in mates_with %}<a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>
+        <dt title="Parts used in or with it, e.g. a housing's contacts">Accepts</dt>
+        <dd>{% for p in fits %}<a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>
+        <dt title="Parts that accept this one, e.g. the housing a contact goes into">Fits into</dt>
+        <dd>{% for p in fits_into %}<a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>
+        <dt>Tools</dt>
+        <dd>{% for t in tools %}<a href="{{ t.get_absolute_url }}">{{ t.name }}</a>{% if t.part_number %} <span class="muted">{{ t.part_number }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>
+      </dl>
+    </section>
+  </div>
+</div>
+{% endblock %}

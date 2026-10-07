@@ -1,0 +1,648 @@
+/* Wire Harness Designer, adapted from the stand-alone app. Scoped to #harness-app. */
+
+#harness-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #202634;
+  color: #fff;
+}
+#harness-topbar .brand { font-weight: 600; margin-right: 12px; }
+.hidden { display: none !important; }
+.version-badge {
+  font-size: 12px;
+  color: #cfd8e6;
+  background: rgba(255,255,255,0.08);
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+#harness-topbar input, #harness-topbar select, #harness-topbar button {
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+#harness-topbar button {
+  background: #3b7dd8;
+  color: #fff;
+  border-color: #3b7dd8;
+  cursor: pointer;
+}
+#harness-topbar button:hover { background: #316bbd; }
+#harness-topbar a#btn-project-images { padding: 5px 8px; border-radius: 4px; background: #3b7dd8; color: #fff; text-decoration: none; }
+#harness-topbar a#btn-project-images:hover { background: #316bbd; }
+#harness-topbar a#btn-project-images.hidden { display: none; }
+#status-msg { margin-left: auto; font-size: 13px; color: #9fd8a0; }
+
+#workspace {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--osmia-bar-height, 48px) - 46px);  /* Osmia bar (it wraps on narrow windows) + designer bar */
+}
+
+#main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#library-panel, #props-panel {
+  width: 250px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #ddd;
+  padding: 10px;
+  overflow-y: auto;
+}
+#props-panel { border-right: none; border-left: 1px solid #ddd; }
+
+#library-panel h3, #props-panel h3 { margin: 4px 0 8px; font-size: 14px; text-transform: uppercase; color: #666; }
+
+.device-card {
+  position: relative;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 28px 18px 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.device-card:hover { background: #f0f4ff; }
+.device-card.selected { border-color: #3b7dd8; background: #eaf1fd; }
+.device-card .dev-title { font-weight: 600; }
+.device-card .dev-sub { color: #777; font-size: 12px; }
+.device-card .dev-owner { color: #3b7dd8; font-size: 11px; margin-top: 2px; }
+.device-card .dev-version-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 10px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: pointer;
+  color: #666;
+}
+.device-card .dev-edit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: none;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.device-card .dev-edit:hover { color: #3b7dd8; }
+
+.hint { font-size: 12px; color: #888; }
+
+
+#canvas-wrap {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background: #eef0f3;
+  background-image: radial-gradient(#d7dbe0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+#canvas { background: transparent; display: block; }
+/* The tip next to a clicked connector: loop back, create extension, or click another */
+#connector-tip {
+  position: absolute; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 420px;
+  padding: 6px 8px; border-radius: 8px; border: 1px solid #3b7dd8; background: #fff; font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+#connector-tip.hidden { display: none; }
+#connector-tip #connector-tip-title { color: #1e4fa3; margin-right: 2px; }
+#connector-tip button { padding: 4px 10px; border-radius: 14px; border: 1px solid #3b7dd8; background: #fff; color: #3b7dd8; font-size: 12px; cursor: pointer; }
+#connector-tip button:hover { background: #3b7dd8; color: #fff; }
+#connector-tip .tip-hint { color: #777; }
+
+#harness-list .harness-row {
+  font-size: 12px;
+  padding: 5px 4px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+#harness-list .harness-row:hover { background: #f7f7f7; }
+#harness-list .harness-row .h-count { color: #888; font-size: 11px; }
+
+#props-body label, .modal label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin: 8px 0 3px;
+}
+#props-body input, #props-body select, .modal input, .modal select {
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#props-body button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+#harness-app .danger { border-color: #d9534f; color: #d9534f; }
+
+.branch-mini-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 2px;
+  border-bottom: 1px solid #eee;
+}
+.branch-mini-row button {
+  border: none;
+  background: transparent;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+/* ---- Bottom drawer: dense connections table ---- */
+#drawer {
+  flex-shrink: 0;
+  height: 260px;
+  background: #fff;
+  border-top: 2px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}
+#drawer.hidden { display: none; }
+#drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f0f1f3;
+  border-bottom: 1px solid #ddd;
+  font-size: 13px;
+  font-weight: 600;
+}
+#drawer-header button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+}
+#drawer-header .drawer-actions { display: flex; gap: 6px; align-items: center; }
+#drawer-header #btn-export-csv {
+  border: 1px solid #c3d3ee;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #3b7dd8;
+  background: #fff;
+}
+#drawer-header #btn-export-csv:hover { background: #eaf1fd; }
+#drawer-body { flex: 1; overflow-y: auto; padding: 4px 10px 10px; }
+
+#conn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+#conn-table th {
+  text-align: left;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding: 4px 6px;
+  border-bottom: 2px solid #ccc;
+  color: #555;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+#conn-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+#conn-table tr:hover td { background: #dfeaff; }
+#conn-table tr.branch-header-row td {
+  background: #eef2fa;
+  font-size: 11px;
+  padding: 5px 6px;
+  border-top: 2px solid #c3d3ee;
+  border-bottom: 1px solid #c3d3ee;
+}
+#conn-table tr.branch-header-row .conn-del {
+  font-size: 11px;
+  white-space: nowrap;
+}
+#conn-table tr.branch-header-row td.sub-header-cell {
+  font-size: 11px;
+  color: #2a4d8f;
+  white-space: nowrap;
+}
+#conn-table input[type="text"], #conn-table select {
+  width: 100%;
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+#conn-table input[type="checkbox"] { transform: scale(1.1); }
+#conn-table .conn-endpoint { white-space: nowrap; font-family: monospace; font-size: 12px; }
+#conn-table .conn-set {
+  white-space: nowrap;
+  color: #333;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  background: #f3f7fe;
+  border-right: 1px solid #dbe6fa;
+}
+#conn-table .conn-owner {
+  white-space: nowrap;
+  color: #3b7dd8;
+  font-size: 11px;
+}
+#conn-table td.loop-indicator-cell {
+  position: relative;
+  background: #fafafa;
+  min-width: 60px;
+}
+#conn-table td.loop-indicator-cell .loop-line {
+  display: block;
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  border-left: 2px solid #999;
+}
+#conn-table td.loop-indicator-cell .loop-line::before,
+#conn-table td.loop-indicator-cell .loop-line::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  width: 8px;
+  height: 2px;
+  background: #999;
+}
+#conn-table td.loop-indicator-cell .loop-line::before { top: 0; }
+#conn-table td.loop-indicator-cell .loop-line::after { bottom: 0; }
+#conn-table .conn-del {
+  border: none;
+  background: transparent;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#add-conn-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+#add-conn-row select { padding: 3px 5px; font-size: 12px; }
+#add-conn-row button {
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #3b7dd8;
+  background: #3b7dd8;
+  color: #fff;
+}
+
+/* ---- New Device modal ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal.hidden { display: none; }
+.modal-box {
+  background: #fff;
+  border-radius: 6px;
+  padding: 16px 20px;
+  width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-box h3 { margin-top: 0; }
+.modal-box h4 { margin: 10px 0 4px; font-size: 13px; color: #555; }
+
+.connector-block {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 8px;
+  margin-bottom: 10px;
+  background: #fafafa;
+}
+.connector-block-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.connector-block-header input.conn-id { flex: 1; padding: 4px 6px; }
+.connector-block-header select.conn-side { padding: 4px 6px; }
+.connector-block-header button.conn-remove {
+  border: none;
+  background: transparent;
+  color: #d9534f;
+  cursor: pointer;
+}
+
+.pin-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.pin-row input { flex: 1; padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; }
+.pin-row button { cursor: pointer; border: none; background: transparent; color: #999; }
+
+.conn-pin-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+.conn-pin-actions button {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.pin-set {
+  border: 1px dashed #a9c3ea;
+  border-radius: 5px;
+  padding: 6px 6px 2px;
+  margin: 6px 0;
+  background: #f3f7fe;
+}
+.pin-set-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.pin-set-header .set-label {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+.pin-set-header button {
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #3b7dd8;
+  white-space: nowrap;
+}
+.pin-set-header .set-remove { color: #d9534f; }
+
+#btn-add-connector {
+  width: 100%;
+  padding: 6px;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.add-set-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.add-set-row select {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#btn-add-mapping {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #3b7dd8;
+  background: #3b7dd8;
+  color: #fff;
+  white-space: nowrap;
+}
+
+#connect-modal .modal-box { width: 660px; }
+#connect-unit-row { margin-bottom: 8px; }
+#connect-unit-row label { display: block; font-size: 12px; color: #555; margin: 0 0 3px; }
+#connect-unit-row select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+
+.pick-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+  border: 1px solid #e2e6ee;
+}
+.pick-table th {
+  text-align: center;
+  padding: 4px 5px;
+  background: #f5f7fb;
+  border-bottom: 1px solid #e2e6ee;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #666;
+}
+.pick-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid #eef0f5;
+  vertical-align: middle;
+}
+.pick-table td.pick-signal {
+  color: #666;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+.pick-table select {
+  width: 100%;
+  font-size: 11px;
+  padding: 3px 2px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+.pick-table thead tr:nth-child(2) th:nth-child(4),
+.pick-table tbody td:nth-child(4) {
+  border-left: 2px solid #b9cdee;
+}
+.pick-table .mapping-remove {
+  border: none;
+  background: transparent;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pick-table .no-rows {
+  color: #888;
+  font-style: italic;
+  text-align: center;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.rule-row input {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.rule-row .rule-remove {
+  border: none;
+  background: transparent;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#btn-add-rule {
+  width: 100%;
+  padding: 6px;
+  cursor: pointer;
+  margin-top: 2px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+.version-row .version-current { color: #3b7dd8; font-weight: 600; font-size: 11px; margin-left: 6px; }
+.version-row button {
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #3b7dd8;
+  background: #3b7dd8;
+  color: #fff;
+  font-size: 12px;
+}
+
+.branch-mini-row label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #555;
+  margin: 0;
+}
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modal-actions button { padding: 6px 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
+#btn-save-device { background: #3b7dd8; color: #fff; border-color: #3b7dd8; }
+
+/* Osmia additions */
+#harness-app { background: #f4f5f7; color: #1c1e21; font-family: system-ui, Arial, sans-serif; }
+#harness-app .dev-open { position: absolute; top: 6px; right: 30px; text-decoration: none; font-size: 13px; }
+#harness-app .device-card { padding-right: 46px; }
+
+/* Device library as a dropdown bar; no side panes; canvas and table 50/50. */
+#library-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 10px; background: #fff; border-bottom: 1px solid #ddd; font-size: 13px;
+}
+#library-bar label { display: flex; align-items: center; gap: 6px; }
+#library-bar select { max-width: 380px; padding: 4px 6px; }
+#library-bar button, #library-bar a {
+  padding: 4px 10px; border: 1px solid #c3d3ee; border-radius: 4px; background: #fff;
+  color: #3b7dd8; cursor: pointer; text-decoration: none; font-size: 13px;
+}
+#library-bar button:hover:not(:disabled), #library-bar a:hover { background: #eaf1fd; }
+#library-bar button:disabled { opacity: .45; cursor: default; }
+#library-bar .bar-sep { width: 1px; align-self: stretch; background: #ddd; margin: 0 4px; }
+#selection-bar { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+#selection-bar label { display: flex; align-items: center; gap: 4px; }
+#selection-bar input[type=text] { width: 150px; padding: 3px 6px; }
+#selection-bar .danger { background: #fff; }
+#main { flex: 1 1 0; min-height: 0; }
+.pick-table tr.pick-bad td { background: #fdecea; }
+.pick-table .pick-arrow { text-align: center; color: #888; }
+.branch-header-row .conn-verify-label { font-weight: normal; font-size: 12px; color: #555; white-space: nowrap; }
+#harness-app .conn-part { font-size: 11px; font-weight: normal; color: #555; margin-top: 2px; }
+#harness-app .conn-part a { color: #3b7dd8; }
+#harness-app .conn-part.muted { color: #aaa; font-style: italic; }
+#library-bar #btn-reload-devices { padding: 4px 8px; }
+
+/* Pinout table as a popup, opened from the "Show pinout" hint on a harness */
+#drawer.modal { height: auto; border-top: 0; background: rgba(0, 0, 0, 0.4); display: flex; flex-direction: row; }
+#drawer.modal.hidden { display: none; }
+#drawer .pinout-box { width: min(1200px, 95vw); max-height: 85vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+#drawer .pinout-box #drawer-header { border-radius: 6px 6px 0 0; padding: 10px 14px; font-size: 14px; }
+#drawer .pinout-box #drawer-body { overflow: auto; padding: 8px 14px 14px; }
+#pinout-hint {
+  position: absolute; z-index: 5; padding: 5px 10px; border-radius: 14px;
+  border: 1px solid #3b7dd8; background: #fff; color: #3b7dd8; font-size: 12px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .15); white-space: nowrap;
+}
+#pinout-hint:hover { background: #3b7dd8; color: #fff; }
+
+/* Zoom and pan: the canvas fills the area; no scrollbars */
+#canvas-wrap { overflow: hidden; }
+#canvas { cursor: default; touch-action: none; }
+#library-bar #zoom-level { min-width: 52px; font-variant-numeric: tabular-nums; }
+
+/* Pinout popup: the pins are what matters most */
+#conn-table th.pin-head { background: #eaf1fd; color: #1e4fa3; font-size: 12px; text-align: center; }
+#conn-table td.pin-cell { background: #f3f7fe; border-left: 2px solid #b9cdee; border-right: 2px solid #b9cdee; padding: 3px 6px; }
+#conn-table td.pin-cell select { font-size: 14px; font-weight: 700; min-width: 110px; padding: 3px 6px; border-color: #b9cdee; color: #1c1e21; }
+#conn-table tr:hover td.pin-cell { background: #e4edfc; }
+#conn-table td.conn-owner { color: #666; }
+
+
+/* Loopback wires: both pins on the left, one merged "loop back" cell on the right */
+#conn-table td.loop-indicator-cell { text-align: center; vertical-align: middle; color: #555; font-weight: 600; background: #fafafa; }
+#conn-table tr.loop-second-pin td { border-top: 0; }
+
+/* Pinout popup: no bold anywhere; tags, sets and wire colours */
+#drawer, #drawer th, #drawer strong, #drawer-header, #drawer .sub-header-cell, #conn-table td.pin-cell select,
+#conn-table td.loop-indicator-cell, #conn-table .conn-set { font-weight: normal; }
+#conn-table td.tag-cell { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #333; white-space: nowrap; }
+#conn-table td.tag-cell.inherited { color: #6b4fa0; font-style: italic; }
+#conn-table td.set-cell { font-size: 12px; color: #444; white-space: nowrap; }
+#conn-table td.color-cell { white-space: nowrap; }
+#conn-table td.color-cell input { width: 90px; }
+.wire-swatch { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: middle; border: 1px solid #999; border-radius: 2px; }
+.wire-swatch.unknown { background: repeating-linear-gradient(45deg, #eee, #eee 3px, #fff 3px, #fff 6px); }
+
+/* Order parts */
+#order-modal input.suggested { color: #8a6d1f; background: #fff8e6; }
+#order-modal input.qty { width: 60px; }

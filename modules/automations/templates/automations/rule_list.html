@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Automation rules</h1>
+  {% if perms.automations.add_rule %}<a class="btn primary" href="{% url 'automations:create' %}">New rule</a>{% endif %}
+</div>
+<table class="list">
+  <thead><tr><th>Rule</th><th>When</th><th>Then</th><th>On</th><th class="num">Runs</th><th>Last ran</th></tr></thead>
+  <tbody>
+  {% for rule in object_list %}
+    <tr>
+      <td><a href="{{ rule.get_absolute_url }}">{{ rule.name }}</a>{% if rule.description %}<br><small class="muted">{{ rule.description|truncatechars:90 }}</small>{% endif %}</td>
+      <td>{{ rule.trigger_label }}{% if rule.conditions %} <small class="muted">+ {{ rule.conditions|length }} condition{{ rule.conditions|length|pluralize }}</small>{% endif %}</td>
+      <td>{{ rule.action_labels|join:", " }}</td>
+      <td>{% if rule.active %}<span class="badge done">On</span>{% else %}<span class="badge off">Off</span>{% endif %}</td>
+      <td class="num">{{ rule.run_count }}</td>
+      <td>{{ rule.last_run|date:"DATETIME_FORMAT"|default:"—" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No rules yet. A rule does things by itself when something happens, e.g. "when an order is placed, create the tasks to check it in".</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

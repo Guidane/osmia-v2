@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Applying changes · Osmia{% endblock %}
+{% block content %}
+<div class="card narrow" id="applying" data-status-url="{% url 'core:modules_status' %}"
+     data-done-url="{% url 'core:modules' %}" data-last="{{ last }}">
+  {% if pending %}
+    <h1><span class="spinner"></span> Applying changes…</h1>
+    <ul>{% for op in pending.ops %}<li>{{ op.op|capfirst }} {{ op.title|default:op.label }}{% if op.version %} {{ op.version }}{% endif %}</li>{% endfor %}</ul>
+    {% if supervised %}
+      <p class="muted">Osmia is restarting: it backs up the database, makes the change and updates the database.
+        This page goes on by itself when it's done.</p>
+    {% else %}
+      <p class="flash">Osmia can't restart by itself here. Stop it (Ctrl+C) and start it again to apply the change;
+        this page goes on by itself when it's back.</p>
+    {% endif %}
+  {% else %}
+    <h1>Nothing to apply</h1>
+    <p><a href="{% url 'core:modules' %}">Back to Modules</a></p>
+  {% endif %}
+</div>
+{% if pending %}
+<script>
+(function () {
+  const box = document.getElementById('applying');
+  async function poll() {
+    try {
+      const r = await fetch(box.dataset.statusUrl, {cache: 'no-store', credentials: 'same-origin'});
+      if (r.ok) {
+        const s = await r.json();
+        if (!s.pending) {
+          location.href = box.dataset.doneUrl + '?done=' + encodeURIComponent(s.result) + '#recent';
+          return;
+        }
+      }
+    } catch (e) { /* restarting: not answering yet */ }
+    setTimeout(poll, 1500);
+  }
+  setTimeout(poll, 2000);
+})();
+</script>
+{% endif %}
+{% endblock %}

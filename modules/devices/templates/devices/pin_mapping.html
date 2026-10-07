@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow-wide">
+  <h1>{{ device.name }} · pin mapping</h1>
+  <p class="muted">An interconnect (adapter, breakout, extension) passes each input pin through to an output pin.
+    In the harness designer, mapped pins take the tags of the unit wired to the other side.</p>
+
+  <form method="post" class="map-quick">
+    {% csrf_token %}
+    <input type="hidden" name="by_position" value="1">
+    <strong>Quick:</strong> map every pin of
+    <select name="from_connector">{% for c in connectors %}<option value="{{ c.pk }}">{{ c.designator }}{% if c.description %} · {{ c.description }}{% endif %}</option>{% endfor %}</select>
+    to the pin in the same place on
+    <select name="to_connector">{% for c in connectors %}<option value="{{ c.pk }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ c.designator }}{% if c.description %} · {{ c.description }}{% endif %}</option>{% endfor %}</select>
+    <button class="btn small">Add</button>
+  </form>
+
+  <form method="post" class="form">
+    {% csrf_token %}
+    <table class="list compact">
+      <thead><tr><th>In</th><th></th><th>Out</th><th></th></tr></thead>
+      <tbody id="map-rows">
+      {% for m in maps %}
+        <tr>
+          <td>{% include "devices/_pin_select.html" with name="from" value=m.from_pin_id %}</td><td class="muted">→</td>
+          <td>{% include "devices/_pin_select.html" with name="to" value=m.to_pin_id %}</td>
+          <td><button type="button" class="btn small remove map-remove">✕</button></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <template id="map-template">
+      <tr>
+        <td>{% include "devices/_pin_select.html" with name="from" value="" %}</td><td class="muted">→</td>
+        <td>{% include "devices/_pin_select.html" with name="to" value="" %}</td>
+        <td><button type="button" class="btn small remove map-remove">✕</button></td>
+      </tr>
+    </template>
+    <button type="button" class="btn small" id="btn-add-map">+ Add pin</button>
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{{ device.get_absolute_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  (function () {
+    const rows = document.getElementById('map-rows');
+    const template = document.getElementById('map-template').innerHTML;
+    document.getElementById('btn-add-map').addEventListener('click', () => rows.insertAdjacentHTML('beforeend', template));
+    rows.addEventListener('click', e => { if (e.target.closest('.map-remove')) e.target.closest('tr').remove(); });
+  })();
+</script>
+{% endblock %}

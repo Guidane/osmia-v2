@@ -1,0 +1,30 @@
+{% load osmia_static %}
+<div class="toolbar">
+  <span><strong>{{ total|floatformat:"-2" }} {{ part.unit }}</strong> on hand{% if low %} <span class="badge warn">Low stock</span>{% endif %}
+    {% if settings %}<span class="muted"> · reorder at {{ settings.reorder_level|floatformat:"-2" }} · average cost {{ settings.average_cost|floatformat:2 }}</span>{% endif %}</span>
+  <a class="btn small primary" href="{% url 'stock:move_create' %}?part={{ part.pk }}&move_type=in">Receive</a>
+  <a class="btn small" href="{% url 'stock:move_create' %}?part={{ part.pk }}&move_type=out">Issue</a>
+  <a class="btn small" href="{% url 'stock:move_create' %}?part={{ part.pk }}&move_type=adjust">Count</a>
+  <a class="btn small" href="{% url 'stock:part_settings' part.pk %}">Reorder level</a>
+</div>
+{% if items %}
+  {% include "stock/_move_bar.html" %}
+  <table class="list compact" data-select>
+    <thead><tr><th class="select-cell"><input type="checkbox" data-select-all aria-label="Select all"></th><th>Location</th><th class="num">Quantity</th></tr></thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td class="select-cell"><input type="checkbox" class="row-select" name="items" value="{{ item.pk }}" form="transfer-form" aria-label="Select"></td>
+        <td>{% if item.location %}<a href="{{ item.location.get_absolute_url }}">{% if item.location.code %}<code>{{ item.location.code }}</code> {% endif %}{{ item.location.full_path }}</a>{% else %}<span class="muted">No location (not put away)</span>{% endif %}</td>
+        <td class="num">{{ item.quantity|floatformat:"-2" }} {{ part.unit }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <script src="{% versioned_static 'core/select_rows.js' %}"></script>
+{% else %}
+  <p class="muted">None in stock.</p>
+{% endif %}
+<h3>Recent moves</h3>
+{% include "stock/_moves_table.html" with hide_part=True %}
+<p><a href="{% url 'stock:move_list' %}?part={{ part.pk }}">All moves of {{ part.part_number }}</a></p>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Notifications</h1>
+  <form method="post">{% csrf_token %}<button class="btn">Mark all as read</button></form>
+</div>
+<ul class="notifications card">
+{% for n in notifications %}
+  <li class="{% if not n.read %}unread{% endif %}">
+    <a href="{% url 'automations:open_notification' n.pk %}">{{ n.message }}</a>
+    <small class="muted">{{ n.created_at|timesince }} ago{% if n.rule %} · rule <a href="{{ n.rule.get_absolute_url }}">{{ n.rule }}</a>{% endif %}</small>
+  </li>
+{% empty %}
+  <li class="muted">No notifications. Rules with a "Notify people" step send them here.</li>
+{% endfor %}
+</ul>
+{% endblock %}

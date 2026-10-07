@@ -1,0 +1,16 @@
+<table class="list">
+  <thead><tr><th>Task</th><th>Status</th><th>Priority</th>{% if not hide_assignee %}<th>Assignee</th>{% endif %}<th>Due</th></tr></thead>
+  <tbody>
+  {% for task in tasks %}
+    <tr>
+      <td><a href="{{ task.get_absolute_url }}">{{ task.title }}</a></td>
+      <td><span class="badge {{ task.status }}">{{ task.get_status_display }}</span></td>
+      <td><span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span></td>
+      {% if not hide_assignee %}<td>{% if task.assignee %}<a href="{{ task.assignee.get_absolute_url }}">{{ task.assignee }}</a>{% else %}<span class="muted">Unassigned</span>{% endif %}</td>{% endif %}
+      <td class="{% if task.is_overdue %}overdue{% endif %}">{{ task.due_date|date|default:"—" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No tasks.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

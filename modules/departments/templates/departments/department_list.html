@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Departments</h1>
+  {% if perms.departments.add_department %}<a class="btn primary" href="{% url 'departments:create' %}">New department</a>{% endif %}
+</div>
+<table class="list">
+  <thead><tr><th>Department</th><th class="num">Members</th></tr></thead>
+  <tbody>
+  {% for d in object_list %}
+    <tr>
+      <td>
+        {% for a in d.ancestors %}{% if not forloop.last %}<span class="muted">{{ a.name }} › </span>{% endif %}{% endfor %}
+        <a href="{{ d.get_absolute_url }}">{{ d.name }}</a>
+      </td>
+      <td class="num"><a href="{% url 'users:list' %}?department={{ d.pk }}">{{ d.member_count }}</a></td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="2" class="muted">No departments yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

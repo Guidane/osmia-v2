@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load audit_tags %}
+{% block content %}
+<div class="toolbar"><h1>Chains</h1></div>
+<p class="muted">Changes that one module made in others, e.g. placing an order that makes an automation create tasks. Open a chain to see every change in it, in order.</p>
+<table class="list">
+  <thead><tr><th>Chain</th><th>Started</th><th>By</th><th>Path</th><th>Changed in</th><th class="num">Changes</th></tr></thead>
+  <tbody>
+  {% for c in chains %}
+    <tr>
+      <td><a class="chain-id" href="{% url 'audit:chain' c.chain_id %}">#{{ c.chain_id }}</a></td>
+      <td class="nowrap">{{ c.started|date:"Y-m-d H:i" }}</td>
+      <td>{{ c.user|default:"system" }}{% if c.source %}<br><small class="muted">{{ c.source }}</small>{% endif %}</td>
+      <td>{% for m in c.path %}{{ m|module_title }}{% if not forloop.last %} <span class="muted">→</span> {% endif %}{% endfor %}</td>
+      <td>{% for m in c.modules %}<span class="badge">{{ m|module_title }}</span> {% endfor %}</td>
+      <td class="num">{{ c.count }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No cross-module chains yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

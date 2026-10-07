@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load audit_tags %}
+{% block content %}
+<div class="toolbar"><h1>Activity</h1></div>
+<div class="grid-2">
+  <section class="card panel">
+    <h2>People</h2>
+    <table class="list">
+      <thead><tr><th>Who</th><th class="num">Last 24 h</th><th class="num">7 days</th><th class="num">30 days</th><th class="num">All</th><th>Last change</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{% if r.person %}<a href="{% url 'audit:list' %}?user={{ r.person.pk }}">{{ r.person }}</a>{% else %}<a href="{% url 'audit:list' %}?user=none">System / demo data</a>{% endif %}</td>
+          <td class="num">{{ r.today }}</td><td class="num">{{ r.week }}</td><td class="num">{{ r.month }}</td><td class="num">{{ r.total }}</td>
+          <td class="nowrap">{{ r.last|date:"Y-m-d H:i" }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="6" class="muted">Nothing logged yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="card panel">
+    <h2>Modules, last 30 days</h2>
+    <table class="list">
+      <thead><tr><th>Module</th><th class="num">Changes</th><th class="num" title="Made by other modules">⛓</th></tr></thead>
+      <tbody>
+      {% for m in by_module %}
+        <tr><td><a href="{% url 'audit:list' %}?module={{ m.module }}">{{ m.module|module_title }}</a></td><td class="num">{{ m.count }}</td>
+            <td class="num">{% if m.chained %}<a href="{% url 'audit:list' %}?module={{ m.module }}&amp;chained=1">{{ m.chained }}</a>{% else %}0{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="3" class="muted">Nothing yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

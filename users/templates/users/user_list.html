@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Users</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Search name, email, job title">
+    {% for f in filters %}{{ f }}{% endfor %}
+    <select name="show" onchange="this.form.submit()">
+      <option value="">Active only</option>
+      <option value="all" {% if request.GET.show == 'all' %}selected{% endif %}>Include inactive</option>
+    </select>
+    <button class="btn">Search</button>
+  </form>
+  {% if perms.users.add_user %}<a class="btn primary" href="{% url 'users:create' %}">New user</a>{% endif %}
+</div>
+
+<table class="list">
+  <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Job title</th>{% for c in extra_columns %}<th>{{ c }}</th>{% endfor %}<th>Status</th></tr></thead>
+  <tbody>
+  {% for person, cells in rows %}
+    <tr>
+      <td>{% cover_thumb person 28 "avatar" %} <a href="{{ person.get_absolute_url }}">{{ person }}</a></td>
+      <td>{{ person.username }}</td>
+      <td>{{ person.email }}</td>
+      <td>{{ person.job_title }}</td>
+      {% for cell in cells %}<td>{{ cell }}</td>{% endfor %}
+      <td>
+        {% if not person.is_active %}<span class="badge off">Inactive</span>
+        {% elif person.is_superuser %}<span class="badge high">Admin</span>
+        {% elif person.is_staff %}<span class="badge in_progress">Manager</span>
+        {% else %}<span class="badge">Member</span>{% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="{{ extra_columns|length|add:5 }}" class="muted">No users found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

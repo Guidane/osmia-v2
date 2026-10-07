@@ -1,0 +1,29 @@
+{% load osmia_static %}{% comment %}
+  A searchable table of parts with an "Add" button per row, plus "Quick part"
+  (part number + description) to make one on the fly. The page reacts to a
+  pick by listening for the "part-picked" event on this element:
+  el.addEventListener('part-picked', e => use(e.detail)), e.detail = {id, part_number, name, unit, ...}.
+  Options: picker_id, add_label (button text), exclude (part id not to offer, e.g. the part itself).
+{% endcomment %}
+<div class="part-picker" id="{{ picker_id|default:'part-picker' }}" data-part-picker
+     data-search-url="{% url 'inventory:part_search' %}" data-quick-url="{% url 'inventory:part_quick_create' %}"
+     data-add-label="{{ add_label|default:'Add' }}" data-exclude="{{ exclude|default:'' }}">
+  <div class="picker-head">
+    <input type="search" class="picker-search" placeholder="Search parts: number, description, category or attribute" aria-label="Search parts">
+    <button type="button" class="btn small picker-quick-toggle">+ Quick part</button>
+    <a class="btn small" href="{% url 'inventory:part_create' %}" target="_blank" title="The full part form, in a new tab; search for it here afterwards">New part ↗</a>
+  </div>
+  <div class="picker-quick" hidden>
+    <input type="text" class="picker-quick-number" placeholder="Part number" maxlength="50" aria-label="New part number">
+    <input type="text" class="picker-quick-name" placeholder="Description" maxlength="200" aria-label="New part description">
+    <button type="button" class="btn small primary picker-quick-add">Create and {{ add_label|default:'add'|lower }}</button>
+    <span class="picker-error"></span>
+  </div>
+  <div class="picker-results">
+    <table class="list compact">
+      <thead><tr><th>Part number</th><th>Description</th><th>Category</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+<script src="{% versioned_static 'inventory/part_picker.js' %}"></script>

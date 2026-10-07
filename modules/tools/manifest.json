@@ -1,0 +1,14 @@
+{
+  "label": "tools",
+  "title": "Tools",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Crimp tools, insertion tools, meters and the like, and which parts they are used with.",
+  "icon": "🛠️",
+  "sequence": 28,
+  "depends": ["users"],
+  "menu": [
+    {"label": "Tools", "url": "tools:list"},
+    {"label": "New tool", "url": "tools:create"}
+  ]
+}

@@ -1,0 +1,47 @@
+{% load static osmia_static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% if current_module %}{{ current_module.manifest.title }} · {% endif %}Osmia{% endblock %}</title>
+  <link rel="stylesheet" href="{% versioned_static 'core/osmia.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+<header class="topbar">
+  <a class="brand" href="{% url 'core:home' %}" title="All modules">▦ Osmia</a>
+  {% if current_module %}
+    <span class="module-title">{{ current_module.manifest.icon }} {{ current_module.manifest.title }}</span>
+    <nav class="module-menu">
+      {% for item in current_module.manifest.menu %}
+        {% url item.url_name as item_url %}
+        <a href="{{ item_url }}" class="{% if request.path == item_url %}active{% endif %}">{{ item.label }}</a>
+      {% endfor %}
+      {% if module_log_url %}<a href="{{ module_log_url }}" title="Every change in {{ current_module.manifest.title }}">Log</a>{% endif %}
+    </nav>
+  {% endif %}
+  <div class="spacer"></div>
+  <nav class="module-switcher">
+    {% for m in osmia_modules %}{% if m.home_url_name %}
+      <a href="{% url m.home_url_name %}" title="{{ m.manifest.title }}" class="{% if m == current_module %}active{% endif %}">{{ m.manifest.icon }}</a>
+    {% endif %}{% endfor %}
+  </nav>
+  {% if user.is_superuser %}<a href="{% url 'core:modules' %}" title="Install, update or remove modules">⚙</a>{% endif %}
+  {% for item in topbar_items %}{{ item|safe }}{% endfor %}
+  <a class="me" href="{% url 'users:detail' user.pk %}">{{ user.get_full_name|default:user.username }}</a>
+  <form method="post" action="{% url 'users:logout' %}">{% csrf_token %}<button class="link">Log out</button></form>
+</header>
+{% endif %}
+
+<main class="{% block main_class %}content{% endblock %}">
+  {% if osmia_safe_mode and user.is_authenticated %}
+    <div class="flash error">Osmia started in <strong>safe mode</strong>, without its modules, because it did not start with them.
+      {% if user.is_superuser %}See what happened on the <a href="{% url 'core:modules' %}">Modules</a> page, and switch off the module that stops it.{% endif %}</div>
+  {% endif %}
+  {% for message in messages %}
+    <div class="flash {{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

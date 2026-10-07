@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+
+    <fieldset>
+      <legend>Attributes</legend>
+      <p class="muted">Each part in this category gets its own value for these attributes.</p>
+      {{ formset.management_form }}
+      {{ formset.non_form_errors }}
+      <table class="list compact">
+        <thead><tr><th>Name</th><th>Typical value</th><th>Delete</th></tr></thead>
+        <tbody>
+        {% for f in formset %}
+          <tr>
+            <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.name }}{{ f.name.errors }}{{ f.non_field_errors }}</td>
+            <td>{{ f.default_value }}</td>
+            <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted">Save to get more blank rows.</p>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{% url 'inventory:category_list' %}">Cancel</a>
+      {% if category.pk %}<a class="btn" href="{% url 'inventory:part_create' %}?category={{ category.pk }}">New part in this category</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

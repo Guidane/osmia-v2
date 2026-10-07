@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Set up · Osmia{% endblock %}
+{% block content %}
+<div class="card narrow setup">
+  <span class="brand">▦ Osmia</span>
+  <h1>Welcome</h1>
+  <p class="muted">Make the administrator account. The administrator can add people, and install, update and remove modules.</p>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% if field.name != 'modules' and field.name != 'demo' %}{% include "core/_field.html" %}{% endif %}{% endfor %}
+    {% if form.modules %}
+      <fieldset>
+        <legend>Modules to install</legend>
+        <div class="module-checks">{{ form.modules }}</div>
+        <small class="muted">{{ form.modules.help_text }}</small>
+      </fieldset>
+    {% endif %}
+    {% include "core/_field.html" with field=form.demo %}
+    <div class="actions"><button class="btn primary">Set up Osmia</button></div>
+  </form>
+</div>
+{% endblock %}

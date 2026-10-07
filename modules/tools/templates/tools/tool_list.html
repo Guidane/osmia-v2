@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Tools</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Name, part no., maker, asset tag">
+    <select name="kind" onchange="this.form.submit()">
+      <option value="">All types</option>
+      {% for value, label in kinds %}<option value="{{ value }}" {% if request.GET.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="check"><input type="checkbox" name="retired" value="1" {% if request.GET.retired %}checked{% endif %} onchange="this.form.submit()"> Show retired</label>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn primary" href="{% url 'tools:create' %}">New tool</a>
+</div>
+<table class="list">
+  <thead><tr><th>Tool</th><th>Part number</th><th>Type</th><th>Manufacturer</th><th>Kept at</th><th class="num">Used with</th><th>Calibration due</th></tr></thead>
+  <tbody>
+  {% for t in object_list %}
+    <tr>
+      <td>{% cover_thumb t 28 %} <a href="{{ t.get_absolute_url }}">{{ t.name }}</a>{% if not t.is_active %} <span class="badge off">Retired</span>{% endif %}</td>
+      <td>{{ t.part_number|default:"—" }}</td>
+      <td>{{ t.get_kind_display }}</td>
+      <td>{{ t.manufacturer|default:"—" }}</td>
+      <td>{{ t.storage|default:"—" }}</td>
+      <td class="num">{{ t.parts.count }} part{{ t.parts.count|pluralize }}</td>
+      <td>{{ t.calibration_due|date|default:"—" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">No tools yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

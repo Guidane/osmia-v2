@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>{% if module %}{{ module.manifest.icon }} {{ module.manifest.title }} log{% else %}Change log{% endif %}</h1>
+</div>
+<form method="get" class="log-filters">
+  <select name="module" onchange="this.form.submit()" aria-label="Module">
+    <option value="">All modules</option>
+    {% for m in modules %}<option value="{{ m.label }}" {% if request.GET.module == m.label %}selected{% endif %}>{{ m.manifest.icon }} {{ m.manifest.title }}</option>{% endfor %}
+  </select>
+  <select name="action" onchange="this.form.submit()" aria-label="Kind of change">
+    <option value="">All changes</option>
+    {% for value, label in actions %}<option value="{{ value }}" {% if request.GET.action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="user" onchange="this.form.submit()" aria-label="By">
+    <option value="">Anyone</option>
+    <option value="none" {% if request.GET.user == "none" %}selected{% endif %}>System / demo data</option>
+    {% for p in people %}<option value="{{ p.pk }}" {% if request.GET.user == p.pk|stringformat:"s" %}selected{% endif %}>{{ p }}</option>{% endfor %}
+  </select>
+  <label class="check"><input type="checkbox" name="chained" value="1" {% if request.GET.chained %}checked{% endif %} onchange="this.form.submit()"> ⛓ Only changes made by other modules</label>
+  <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Record, rule or chain id">
+  <button class="btn small">Filter</button>
+</form>
+<p class="muted">Every create, change and delete. A <span class="chain-tag">⛓ module</span> tag means another module's code made the change; its <span class="chain-id">#id</span> traces the whole chain across modules.</p>
+{% include "audit/_entries.html" with entries=object_list show_module=True %}
+{% include "audit/_pager.html" %}
+{% endblock %}

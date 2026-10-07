@@ -1,0 +1,3 @@
+{% for c in uses %}
+  <p><a href="{{ c.device.get_absolute_url }}">{{ c.device.name }}</a> <strong>{{ c.designator }}</strong> {% if c.description %}<span class="muted">· {{ c.description }}</span>{% endif %}</p>
+{% endfor %}

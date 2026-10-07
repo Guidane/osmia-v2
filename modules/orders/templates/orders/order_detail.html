@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load humanize osmia_images %}
+{% block content %}
+{% with o=order %}
+<div class="toolbar">
+  <h1>{{ o.number }}{% if o.supplier %} <span class="muted">· {{ o.supplier }}</span>{% endif %} {% include "orders/_status.html" %}</h1>
+  {% if can_place %}
+    <form method="post" action="{% url 'orders:set_status' o.pk %}">{% csrf_token %}<button class="btn primary" name="status" value="placed">Place order</button></form>
+  {% endif %}
+  {% if can_receive %}<a class="btn primary" href="{% url 'orders:receive' o.pk %}">Receive…</a>{% endif %}
+  {% if can_cancel %}
+    <form method="post" action="{% url 'orders:set_status' o.pk %}" onsubmit="return confirm('Cancel {{ o.number }}?')">{% csrf_token %}<button class="btn" name="status" value="cancelled">Cancel order</button></form>
+  {% endif %}
+  {% if o.status == 'draft' %}<a class="btn" href="{% url 'orders:edit' o.pk %}">Edit</a>{% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Lines</h2>
+      <table class="list">
+        <thead><tr><th>Part</th><th class="num">Quantity</th><th class="num">Unit price</th><th class="num">Total</th>{% if o.status != 'draft' %}<th>Received</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for line in lines %}
+          <tr>
+            <td><a href="{{ line.part.get_absolute_url }}">{{ line.part }}</a></td>
+            <td class="num">{{ line.quantity|floatformat:"-2" }} {{ line.part.unit }}</td>
+            <td class="num">{{ line.unit_price|floatformat:2|intcomma }}</td>
+            <td class="num">{{ line.line_total|floatformat:2|intcomma }}</td>
+            {% if o.status != 'draft' %}<td>{% if line.received_at %}<span class="badge done">{{ line.received_at|date:"Y-m-d" }}</span>
+              {% if line.location %}<a href="{{ line.location.get_absolute_url }}">{% if line.location.code %}<code>{{ line.location.code }}</code>{% else %}{{ line.location.name }}{% endif %}</a>{% else %}<span class="muted">no location</span>{% endif %}
+              {% elif o.status == 'cancelled' %}—{% else %}<span class="muted">to come</span>{% endif %}</td>{% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">No lines yet. {% if o.status == 'draft' %}<a href="{% url 'orders:edit' o.pk %}">Add some</a>.{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+        {% if lines %}<tfoot><tr><th colspan="3">Total</th><th class="num">{{ o.total|floatformat:2|intcomma }}</th></tr></tfoot>{% endif %}
+      </table>
+    </section>
+    {# Panels contributed by other modules, e.g. tasks automation rules created for this order #}
+    {% include "core/panels.html" %}
+  </div>
+  <div>
+  <section class="card">
+    <dl class="props">
+      <dt>Supplier</dt><dd>{% if o.supplier %}<a href="{{ o.supplier.get_absolute_url }}">{{ o.supplier }}</a>{% else %}—{% endif %}</dd>
+      <dt>Budget</dt><dd>{% if budget %}<a href="{{ budget.get_absolute_url }}">{{ budget }}</a><br><small class="muted">{{ budget.remaining|floatformat:2|intcomma }} of {{ budget.amount|floatformat:2|intcomma }} left{% if not o.counts_against_budget %}, before this order{% endif %}</small>{% else %}—{% endif %}</dd>
+      <dt>Created</dt><dd>{{ o.created_at|date }}{% if o.created_by %} by {{ o.created_by }}{% endif %}</dd>
+      {% if o.placed_at %}<dt>Placed</dt><dd>{{ o.placed_at|date }}</dd>{% endif %}
+      {% if o.received_at %}<dt>Received</dt><dd>{{ o.received_at|date }}</dd>{% endif %}
+    </dl>
+    {% if o.notes %}{{ o.notes|linebreaks }}{% endif %}
+  </section>
+  {% image_gallery o title="Shipping documents" empty="No shipping documents yet. Add photos or scans of the delivery note, packing slip, ..." %}
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Harness projects</h1>
+  <a class="btn primary" href="{% url 'harness:designer' %}">Open designer</a>
+</div>
+<table class="list">
+  <thead><tr><th>Project</th><th class="num">Version</th><th class="num">Devices</th><th class="num">Harnesses</th><th class="num">Wires</th><th>Verified</th><th>Updated</th></tr></thead>
+  <tbody>
+  {% for p in object_list %}
+    <tr>
+      <td>{% cover_thumb p 28 %} <a href="{{ p.get_absolute_url }}">{{ p.name }}</a> <a class="muted" href="{% url 'harness:project_images' p.pk %}" title="Photos of this project's harnesses">🖼 {% with n=p.images.all|length %}{% if n %}{{ n }}{% else %}Add{% endif %}{% endwith %}</a></td>
+      <td class="num">v{{ p.version }}</td>
+      <td class="num">{{ p.counts.devices }}</td>
+      <td class="num">{{ p.counts.harnesses }}</td>
+      <td class="num">{{ p.counts.wires }}</td>
+      <td>{% if p.counts.wires %}{{ p.counts.verified }} / {{ p.counts.wires }}{% else %}—{% endif %}</td>
+      <td>{{ p.updated_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">No harness projects yet. Open the designer, place devices from the library and connect their connectors.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

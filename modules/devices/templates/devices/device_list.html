@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>Devices</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Name, part no., model, asset tag">
+    <select name="origin" onchange="this.form.submit()">
+      <option value="">Ours and external</option>
+      {% for value, label in origins %}<option value="{{ value }}" {% if request.GET.origin == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="role" onchange="this.form.submit()">
+      <option value="">All roles</option>
+      {% for value, label in roles %}<option value="{{ value }}" {% if request.GET.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn" href="{% url 'devices:create' %}?origin=external">New external device</a>
+  <a class="btn primary" href="{% url 'devices:create' %}">New device</a>
+</div>
+
+<table class="list">
+  <thead><tr><th>Device</th><th>Part number</th><th>Made by</th><th>Role</th><th class="num">Connectors</th><th class="num">Pins</th><th class="num">Version</th><th>Owner</th></tr></thead>
+  <tbody>
+  {% for d in object_list %}
+    <tr>
+      <td><span class="swatch" style="background: {{ d.color }}"></span> {% cover_thumb d 28 %} <a href="{{ d.get_absolute_url }}">{{ d.name }}</a></td>
+      <td>{{ d.part_number }}</td>
+      <td>{% if d.is_external %}<span class="badge">{{ d.manufacturer|default:"External" }}</span>{% else %}<span class="badge in_progress">Us</span>{% endif %}</td>
+      <td>{{ d.get_role_display }}</td>
+      <td class="num">{{ d.connector_count }}</td>
+      <td class="num">{{ d.pin_count }}</td>
+      <td class="num">v{{ d.version }}</td>
+      <td>{{ d.responsible|default:"—" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="8" class="muted">No devices yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

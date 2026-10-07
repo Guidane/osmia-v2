@@ -1,0 +1,5 @@
+{% for p in projects %}
+  <p><a href="{{ p.get_absolute_url }}">{{ p.name }}</a> <span class="muted">v{{ p.version }}</span></p>
+{% empty %}
+  <p class="muted">Not used in a harness yet. <a href="{% url 'harness:designer' %}">Open the designer</a> to wire it up.</p>
+{% endfor %}

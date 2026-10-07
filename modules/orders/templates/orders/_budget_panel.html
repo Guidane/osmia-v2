@@ -1,0 +1,14 @@
+{% load humanize %}
+<table class="list">
+  <thead><tr><th>Order</th><th>Status</th><th class="num">Total</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td><a href="{{ o.get_absolute_url }}">{{ o }}</a></td>
+      <td>{% include "orders/_status.html" %}</td>
+      <td class="num">{{ o.total|floatformat:2|intcomma }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="muted">Placed and received orders count as spent.</p>

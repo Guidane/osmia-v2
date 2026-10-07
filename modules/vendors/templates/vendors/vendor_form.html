@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+
+    <fieldset>
+      <legend>Contacts</legend>
+      {{ formset.management_form }}
+      {{ formset.non_form_errors }}
+      <table class="list compact">
+        <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Delete</th></tr></thead>
+        <tbody>
+        {% for f in formset %}
+          <tr>
+            <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.name }}{{ f.name.errors }}{{ f.non_field_errors }}</td>
+            <td>{{ f.role }}</td>
+            <td>{{ f.email }}{{ f.email.errors }}</td>
+            <td>{{ f.phone }}</td>
+            <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted">Save to get more blank rows.</p>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      {% if cancel_url %}<a class="btn" href="{{ cancel_url }}">Cancel</a>{% else %}<a class="btn" href="{% url 'vendors:list' %}">Cancel</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% with t=f.target %}
+<tr data-ref="{{ f.ref }}">
+  <td>{{ f.component }}
+    {% if t %}{% if f.is_assembly %}🧩 {% endif %}<a href="{{ t.get_absolute_url }}" target="_blank">{% if f.is_assembly %}{{ t.name }}{% else %}{{ t.part_number }}{% endif %}</a> <span class="muted">{% if f.is_assembly %}sub-assembly{% else %}{{ t.name }}{% endif %}</span>{% else %}<span class="component-label"></span>{% endif %}
+    {{ f.component.errors }}{{ f.non_field_errors }}</td>
+  <td>{{ f.quantity }}{{ f.quantity.errors }}</td>
+  <td><span hidden>{{ f.DELETE }}</span><button type="button" class="btn small remove component-remove" title="Remove">✕</button></td>
+</tr>
+{% endwith %}

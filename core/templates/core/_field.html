@@ -1,0 +1,9 @@
+<div class="field{% if field.errors %} has-error{% endif %}">
+  {% if field.widget_type == 'checkbox' %}
+    <label>{{ field }} {{ field.label }}</label>
+  {% else %}
+    {{ field.label_tag }} {{ field }}
+  {% endif %}
+  {% if field.help_text %}<small class="muted">{{ field.help_text|safe }}</small>{% endif %}
+  {{ field.errors }}
+</div>

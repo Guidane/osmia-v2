@@ -1,0 +1,9 @@
+{% comment %}One form field as a table row: the name on the left, the value on the right.{% endcomment %}
+<tr class="{% if field.errors %}has-error{% endif %}">
+  <th><label for="{{ field.id_for_label }}">{{ field.label }}</label></th>
+  <td>
+    {{ field }}
+    {% if field.help_text %}<small class="muted">{{ field.help_text|safe }}</small>{% endif %}
+    {{ field.errors }}
+  </td>
+</tr>

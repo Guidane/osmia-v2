@@ -1,0 +1,23 @@
+<form method="get">
+  {% for name, value in hidden_params %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Search tasks">
+  {% if not mine %}
+  <select name="assignee" onchange="this.form.submit()">
+    <option value="">Anyone</option>
+    <option value="none" {% if selected_assignee == 'none' %}selected{% endif %}>Unassigned</option>
+    {% for p in people %}
+      <option value="{{ p.pk }}" {% if selected_assignee == p.pk|stringformat:'s' %}selected{% endif %}>{{ p }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  {% if selected_status %}
+  <select name="status" onchange="this.form.submit()">
+    <option value="open" {% if selected_status == 'open' %}selected{% endif %}>Open</option>
+    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All</option>
+    {% for value, label in statuses %}
+      <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <button class="btn">Filter</button>
+</form>

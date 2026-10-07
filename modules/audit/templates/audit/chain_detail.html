@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load audit_tags %}
+{% block content %}
+<div class="toolbar"><h1>Chain <span class="chain-id">#{{ chain_id }}</span></h1><a class="btn" href="{% url 'audit:chains' %}">All chains</a></div>
+<section class="card">
+  <dl class="props">
+    <dt>Started</dt><dd>{{ started|date:"Y-m-d H:i:s" }}{% if user %} by {{ user }}{% endif %}</dd>
+    <dt>Path</dt><dd>{% for m in path %}<span class="badge">{{ m|module_title }}</span>{% if not forloop.last %} → {% endif %}{% endfor %}</dd>
+    <dt>Changed in</dt><dd>{% for m in modules %}{{ m|module_title }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
+    {% if source %}<dt>Source</dt><dd>{{ source }}</dd>{% endif %}
+    <dt>Changes</dt><dd>{{ entries|length }}</dd>
+  </dl>
+</section>
+{% include "audit/_entries.html" with show_module=True %}
+{% endblock %}

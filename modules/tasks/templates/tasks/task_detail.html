@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ task.title }}</h1>
+  <form method="post" action="{% url 'tasks:set_status' task.pk %}">
+    {% csrf_token %}
+    {% for value, label in statuses %}
+      <button name="status" value="{{ value }}" class="btn{% if value == task.status %} primary{% endif %}">{{ label }}</button>
+    {% endfor %}
+  </form>
+  <a class="btn" href="{% url 'tasks:edit' task.pk %}">Edit</a>
+  <a class="btn" href="{% url 'tasks:delete' task.pk %}">Delete</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    <section class="card">
+      {% if task.description %}{{ task.description|linebreaks }}{% else %}<p class="muted">No description.</p>{% endif %}
+    </section>
+    {% image_gallery task empty="No images yet, e.g. photos of the work or the problem." %}
+    {# Panels contributed by other modules, e.g. inventory materials #}
+    {% include "core/panels.html" %}
+  </div>
+  <section class="card">
+    <dl class="props">
+      <dt>Status</dt><dd><span class="badge {{ task.status }}">{{ task.get_status_display }}</span></dd>
+      <dt>Priority</dt><dd><span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span></dd>
+      <dt>Assignee</dt><dd>{% if task.assignee %}<a href="{{ task.assignee.get_absolute_url }}">{{ task.assignee }}</a>{% else %}—{% endif %}</dd>
+      <dt>Department</dt><dd>{% if task.department %}<a href="{{ task.department.get_absolute_url }}">{{ task.department }}</a>{% else %}—{% endif %}</dd>
+      <dt>Start</dt><dd>{{ task.start_date|date|default:"—" }}</dd>
+      <dt>Due</dt><dd class="{% if task.is_overdue %}overdue{% endif %}">{{ task.due_date|date|default:"—" }}</dd>
+      <dt>Created</dt><dd>{{ task.created_at|date }} by {{ task.created_by|default:"an automation" }}</dd>
+      {% if task.batch %}<dt>From rule</dt><dd>{{ task.batch.name }}{% if task.batch.source_label %}, for {% with src=task.batch.source %}{% if src and src.get_absolute_url %}<a href="{{ src.get_absolute_url }}">{{ task.batch.source_label }}</a>{% else %}{{ task.batch.source_label }}{% endif %}{% endwith %}{% endif %}</dd>{% endif %}
+      {% if task.completed_at %}<dt>Completed</dt><dd>{{ task.completed_at|date }}</dd>{% endif %}
+    </dl>
+  </section>
+</div>
+{% endblock %}

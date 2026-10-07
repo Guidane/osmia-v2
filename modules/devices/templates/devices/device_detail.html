@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+{% with d=device %}
+<div class="toolbar">
+  <h1><span class="swatch" style="background: {{ d.color }}"></span> {{ d.name }}
+    {% if d.part_number %}<span class="muted">· {{ d.part_number }}</span>{% endif %}
+    <span class="badge">v{{ d.version }}</span></h1>
+  {% if d.is_interconnect %}<a class="btn" href="{% url 'devices:pin_mapping' d.pk %}">Pin mapping</a>{% endif %}
+  <a class="btn" href="{% url 'devices:edit' d.pk %}">Edit device</a>
+  <a class="btn" href="{% url 'devices:delete' d.pk %}">Remove</a>
+</div>
+
+<div class="device-layout">
+  <aside class="device-sidebar card">
+    <a class="side-link{% if not selected %} active{% endif %}" href="{{ d.get_absolute_url }}">ℹ Device details</a>
+
+    <h2>Connectors</h2>
+    {% for c in connectors %}
+      <a class="side-link{% if c == selected %} active{% endif %}" href="{{ d.get_absolute_url }}?connector={{ c.pk }}">
+        <strong>{{ c.designator }}</strong>
+        <small class="muted">{{ c.description|default:"" }}{% if c.description %} · {% endif %}{{ c.pins.all|length }} pin{{ c.pins.all|length|pluralize }}</small>
+      </a>
+    {% empty %}
+      <p class="muted">No connectors yet.</p>
+    {% endfor %}
+    <a class="btn small primary side-add" href="{% url 'devices:connector_create' d.pk %}">+ Add connector</a>
+  </aside>
+
+  <div class="device-main">
+  {% if selected %}
+    {% with c=selected %}
+    <section class="card panel">
+      <div class="toolbar">
+        <h2>{{ c.designator }}{% if c.description %} <span class="muted">· {{ c.description }}</span>{% endif %}</h2>
+        <form method="post" action="{% url 'devices:connector_clone' d.pk c.pk %}">{% csrf_token %}<button class="btn" title="A copy of this connector and its pins, as the next free connector">Clone</button></form>
+        <a class="btn primary" href="{% url 'devices:connector_edit' d.pk c.pk %}">Edit pins</a>
+      </div>
+      <dl class="props connector-props">
+        <dt>Connector part</dt>
+        <dd>{% if c.part %}<a href="{{ c.part.get_absolute_url }}">{{ c.part.part_number }}</a>{% if c.part.name %} <span class="muted">{{ c.part.name }}</span>{% endif %}{% else %}<span class="muted">not set</span>{% endif %}</dd>
+        {% for name, value in c.part_details %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}
+        <dt>Function</dt><dd>{{ c.description|default:"—" }}</dd>
+        <dt>Harness plug</dt><dd>{{ c.mating_designator }}</dd>
+        <dt>Side in designer</dt><dd>{{ c.get_side_display }}</dd>
+      </dl>
+      <table class="list pin-table">
+        <thead><tr>
+          {% for key, label in sort_columns %}
+            <th><a href="?connector={{ c.pk }}{% if sort_key == key and not sort_desc %}&amp;sort=-{{ key }}{% elif sort_key != key or not sort_desc %}&amp;sort={{ key }}{% endif %}"
+                   class="{% if sort_key == key %}sorted{% if sort_desc %} desc{% endif %}{% endif %}"
+                   title="Sort by {{ label|lower }}{% if sort_key == key %} (click again to reverse){% endif %}">{{ label }}</a></th>
+          {% endfor %}
+        </tr></thead>
+        <tbody>
+        {% for p in pins %}
+          <tr><td>{{ p.label }}</td>
+              {% for t in p.tags|slice:tag_slice %}<td>{% if t %}<code>{{ t }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>{% endfor %}
+              <td>{{ p.signal|default:"—" }}</td>
+              <td>{{ p.set_number|default:"—" }}</td><td>{{ p.get_set_type_display|default:"—" }}</td></tr>
+        {% empty %}
+          <tr><td colspan="8" class="muted">No pins yet. <a href="{% url 'devices:connector_edit' d.pk c.pk %}">Add some</a>.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% image_gallery c title="Pinout images" empty="No images yet, e.g. a drawing or photo of the pinout." %}
+    {% endwith %}
+  {% else %}
+    <section class="card panel">
+      <h2>Device details</h2>
+      <dl class="props">
+        <dt>Part number</dt><dd>{{ d.part_number|default:"—" }}</dd>
+        <dt>Made by</dt><dd>{{ d.get_origin_display }}{% if d.manufacturer %} · {{ d.manufacturer }}{% endif %}</dd>
+        <dt>Role</dt><dd>{{ d.get_role_display }}</dd>
+        <dt>Owner</dt><dd>{% if d.responsible %}<a href="{{ d.responsible.get_absolute_url }}">{{ d.responsible }}</a>{% else %}—{% endif %}</dd>
+        {% if d.assembly %}<dt>Assembly</dt><dd><a href="{{ d.assembly.get_absolute_url }}">{{ d.assembly }}</a> <span class="muted">rev {{ d.assembly.revision }}</span></dd>{% endif %}
+        {% if d.model_number %}<dt>Model</dt><dd>{{ d.model_number }}</dd>{% endif %}
+        {% if d.asset_tag %}<dt>Asset tag</dt><dd>{{ d.asset_tag }}</dd>{% endif %}
+        <dt>Colour</dt><dd><span class="swatch" style="background: {{ d.color }}"></span> {{ d.color }}</dd>
+        <dt>Connectors</dt><dd>{{ connectors|length }}</dd>
+      </dl>
+      {% if d.notes %}<h3>Notes</h3>{{ d.notes|linebreaks }}{% endif %}
+    </section>
+
+    {% image_gallery d %}
+
+    {% if d.is_interconnect %}
+    <section class="card panel">
+      <div class="toolbar"><h2>Pin mapping</h2><a class="btn small" href="{% url 'devices:pin_mapping' d.pk %}">Edit</a></div>
+      <p class="muted">Input pins pass through to output pins. In harnesses, mapped pins take the tags of the unit wired to the other side.</p>
+      {% if pin_maps %}
+      <table class="list compact">
+        <thead><tr><th>In</th><th></th><th>Out</th></tr></thead>
+        <tbody>{% for m in pin_maps %}<tr><td>{{ m.from_pin.connector.designator }}.{{ m.from_pin.label }}</td><td class="muted">→</td><td>{{ m.to_pin.connector.designator }}.{{ m.to_pin.label }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% else %}<p class="muted">Nothing mapped yet.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card panel">
+      <h2>Versions</h2>
+      <p class="muted">A new version is saved whenever the name, connectors or pins change.</p>
+      {% for v in versions %}
+        <div class="version-line">
+          <span><strong>v{{ v.version }}</strong> <small class="muted">{{ v.created_at|date:"Y-m-d H:i" }}{% if v.created_by %} · {{ v.created_by }}{% endif %}</small></span>
+          {% if v.version == d.version %}<span class="badge done">current</span>
+          {% else %}<form method="post" action="{% url 'devices:activate_version' d.pk v.version %}">{% csrf_token %}<button class="btn small">Make current</button></form>{% endif %}
+        </div>
+      {% empty %}
+        <p class="muted">No versions yet.</p>
+      {% endfor %}
+    </section>
+
+    {# Panels contributed by other modules, e.g. harness projects using this device #}
+    {% include "core/panels.html" %}
+  {% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

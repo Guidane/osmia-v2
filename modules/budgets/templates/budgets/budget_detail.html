@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load humanize osmia_static %}
+{% block content %}
+{% with b=budget %}
+<div class="toolbar">
+  <h1>{% for a in b.ancestors %}{% if not forloop.last %}<a class="muted" href="{{ a.get_absolute_url }}">{{ a.name }}</a> › {% endif %}{% endfor %}{{ b.name }}
+    {% if b.budget_number %}<span class="muted">· {{ b.budget_number }}</span>{% endif %}
+    {% if b.over %}<span class="badge high">Over budget</span>{% endif %}</h1>
+  {% if perms.budgets.add_budget %}<a class="btn" href="{% url 'budgets:create' %}?parent={{ b.pk }}">Add sub-budget</a>{% endif %}
+  {% if perms.budgets.change_budget %}<a class="btn" href="{% url 'budgets:edit' b.pk %}">Edit</a>{% endif %}
+</div>
+
+<section class="widgets">
+  <div class="widget"><span class="widget-value">{{ b.amount|floatformat:2|intcomma }}</span><span class="widget-title">Amount</span></div>
+  <div class="widget {% if b.over %}warn{% endif %}"><span class="widget-value">{{ b.spent|floatformat:2|intcomma }}</span><span class="widget-title">Spent, incl. sub-budgets ({{ b.used_pct }}%)</span></div>
+  <div class="widget {% if b.over %}warn{% else %}ok{% endif %}"><span class="widget-value">{{ b.remaining|floatformat:2|intcomma }}</span><span class="widget-title">Remaining</span></div>
+</section>
+
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Tasks charged here <span class="muted">· {{ own_spent|floatformat:2|intcomma }} spent directly</span></h2>
+      <table class="list">
+        <thead><tr><th>Task</th><th>Status</th><th>Assignee</th><th>Costs</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for t in tasks %}
+          <tr>
+            <td><a href="{{ t.get_absolute_url }}">{{ t.title }}</a></td>
+            <td><span class="badge {{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td>{{ t.assignee|default:"—" }}</td>
+            <td class="muted">{% for label, amount in t.costs.items %}{{ label }} {{ amount|floatformat:2|intcomma }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+            <td class="num">{{ t.cost_total|floatformat:2|intcomma }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">No tasks are charged to this budget. Pick it on a task page (the task must be in {{ b.department|default:"the budget's department" }}).</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card panel">
+      <h2>Sub-budgets
+        {% if subtree %}<span class="muted">· {{ allocated|floatformat:2|intcomma }} allocated</span>{% endif %}
+        {% if over_allocated %}<span class="badge warn">More than this budget's amount</span>{% endif %}
+      </h2>
+      {% if subtree %}
+      <div class="toolbar">
+        <input type="search" class="tree-filter" placeholder="Filter…" aria-label="Filter sub-budgets" data-tree-filter="{{ tree_key }}">
+        <button type="button" class="btn small" data-tree-expand="{{ tree_key }}">Expand all</button>
+        <button type="button" class="btn small" data-tree-collapse="{{ tree_key }}">Collapse all</button>
+      </div>
+      {% endif %}
+      {% include "budgets/_tree_table.html" with rows=subtree tree=tree_key empty="None." %}
+    </section>
+    {# Panels contributed by other modules, e.g. the orders placed on this budget #}
+    {% include "core/panels.html" %}
+  </div>
+  <section class="card">
+    <dl class="props">
+      <dt>Number</dt><dd>{{ b.budget_number|default:"—" }}</dd>
+      <dt>Parent</dt><dd>{% if b.parent %}<a href="{{ b.parent.get_absolute_url }}">{{ b.parent }}</a>{% else %}—{% endif %}</dd>
+      <dt>Department</dt><dd>{% if b.department %}<a href="{{ b.department.get_absolute_url }}">{{ b.department }}</a>{% else %}—{% endif %}</dd>
+    </dl>
+  </section>
+</div>
+{% endwith %}
+<script src="{% versioned_static 'core/tree_table.js' %}"></script>
+{% endblock %}

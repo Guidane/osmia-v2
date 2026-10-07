@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow-wide">
+  <h1>Signals</h1>
+  <p class="muted">The signals pins can carry, the same for every device. Renaming one renames it on every pin (and in the harness signal rules).
+    A signal still used by pins can't be deleted.</p>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    {{ formset.non_form_errors }}
+    <table class="list compact">
+      <thead><tr><th>Signal</th><th>Description</th><th class="num">Pins</th><th>Delete</th></tr></thead>
+      <tbody id="signal-rows">
+      {% for f in formset %}
+        <tr>
+          <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.name }}{{ f.name.errors }}</td>
+          <td>{{ f.description }}</td>
+          <td class="num">{% if f.instance.pk %}{{ f.instance.usage }}{% endif %}</td>
+          <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <template id="signal-template">
+      <tr><td>{{ formset.empty_form.name }}</td><td>{{ formset.empty_form.description }}</td><td></td><td></td></tr>
+    </template>
+    <button type="button" class="btn small" id="btn-add-signal">+ Add signal</button>
+    <div class="actions"><button class="btn primary">Save</button></div>
+  </form>
+</div>
+<script>
+  (function () {
+    const total = document.getElementById('id_signals-TOTAL_FORMS');
+    const rows = document.getElementById('signal-rows');
+    const template = document.getElementById('signal-template').innerHTML;
+    document.getElementById('btn-add-signal').addEventListener('click', () => {
+      rows.insertAdjacentHTML('beforeend', template.replace(/__prefix__/g, total.value));
+      total.value = Number(total.value) + 1;
+      rows.lastElementChild.querySelector('input').focus();
+    });
+  })();
+</script>
+{% endblock %}

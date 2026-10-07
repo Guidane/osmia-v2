@@ -1,0 +1,15 @@
+{
+  "label": "inventory",
+  "title": "Parts",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "The parts catalogue: descriptions, categories and attributes, and which parts and tools go together.",
+  "icon": "📦",
+  "sequence": 30,
+  "depends": ["users", "tools"],
+  "menu": [
+    {"label": "Parts", "url": "inventory:part_list"},
+    {"label": "Categories", "url": "inventory:category_list"},
+    {"label": "New part", "url": "inventory:part_create"}
+  ]
+}

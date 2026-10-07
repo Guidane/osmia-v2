@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="app-grid">
+  {% for m in osmia_modules %}{% if m.home_url_name %}
+    <a class="app-tile" href="{% url m.home_url_name %}">
+      <span class="app-icon">{{ m.manifest.icon }}</span>
+      <strong>{{ m.manifest.title }}</strong>
+    </a>
+  {% endif %}{% endfor %}
+  {% if user.is_superuser %}
+    <a class="app-tile" href="{% url 'core:modules' %}">
+      <span class="app-icon">⚙</span>
+      <strong>Modules</strong>
+    </a>
+  {% endif %}
+</section>
+{% if osmia_modules|length <= 1 and user.is_superuser %}
+  <p class="muted" style="text-align:center">No modules are installed yet. Add them on the <a href="{% url 'core:modules' %}">Modules</a> page.</p>
+{% endif %}
+{% endblock %}

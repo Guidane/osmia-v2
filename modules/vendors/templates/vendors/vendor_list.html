@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Vendors</h1>
+  <form method="get">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Name, code, city, account no., contact">
+    <select name="kind" onchange="this.form.submit()">
+      <option value="">All types</option>
+      {% for value, label in kinds %}<option value="{{ value }}" {% if request.GET.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="check"><input type="checkbox" name="inactive" value="1" {% if request.GET.inactive %}checked{% endif %} onchange="this.form.submit()"> Show inactive</label>
+    <button class="btn">Filter</button>
+  </form>
+  <a class="btn primary" href="{% url 'vendors:create' %}">New vendor</a>
+</div>
+<table class="list">
+  <thead><tr><th>Vendor</th><th>Code</th><th>Type</th><th>City</th><th>Country</th><th>Phone</th><th>Account no.</th><th class="num">Contacts</th></tr></thead>
+  <tbody>
+  {% for v in object_list %}
+    <tr>
+      <td><a href="{{ v.get_absolute_url }}">{{ v.name }}</a>{% if not v.is_active %} <span class="badge off">Inactive</span>{% endif %}</td>
+      <td>{{ v.code|default:"—" }}</td>
+      <td>{{ v.get_kind_display }}</td>
+      <td>{{ v.city|default:"—" }}</td>
+      <td>{{ v.country|default:"—" }}</td>
+      <td>{{ v.phone|default:"—" }}</td>
+      <td>{{ v.account_number|default:"—" }}</td>
+      <td class="num">{{ v.contact_count }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="8" class="muted">No vendors yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

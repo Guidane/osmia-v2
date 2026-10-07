@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>{% if mine %}My tasks{% else %}Tasks{% endif %}</h1>
+  {% include "tasks/_filters.html" %}
+  <a class="btn primary" href="{% url 'tasks:create' %}">New task</a>
+</div>
+{% include "tasks/_table.html" with tasks=object_list hide_assignee=mine %}
+{% endblock %}

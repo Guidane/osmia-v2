@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>{% cover_thumb person 44 "avatar" %} {{ person }} {% if not person.is_active %}<span class="badge off">Inactive</span>{% endif %}</h1>
+  {% if can_edit %}<a class="btn" href="{% url 'users:edit' person.pk %}">Edit</a>{% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    {# Panels contributed by other modules (tasks, inventory, ...) #}
+    {% include "core/panels.html" %}
+  </div>
+  <div>
+  <section class="card">
+    <dl class="props">
+      <dt>Username</dt><dd>{{ person.username }}</dd>
+      <dt>Email</dt><dd>{{ person.email|default:"—" }}</dd>
+      <dt>Phone</dt><dd>{{ person.phone|default:"—" }}</dd>
+      <dt>Job title</dt><dd>{{ person.job_title|default:"—" }}</dd>
+      {% for label, html in facts %}<dt>{{ label }}</dt><dd>{{ html }}</dd>{% endfor %}
+      <dt>Joined</dt><dd>{{ person.date_joined|date }}</dd>
+      <dt>Last login</dt><dd>{{ person.last_login|date|default:"Never" }}</dd>
+    </dl>
+  </section>
+  {% image_gallery person title="Photos" empty="No photo yet. The first one is used as the profile picture." %}
+  </div>
+</div>
+{% endblock %}

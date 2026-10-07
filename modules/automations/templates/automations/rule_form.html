@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load osmia_static %}
+{% block content %}
+<link rel="stylesheet" href="{% versioned_static 'automations/builder.css' %}">
+<div class="card builder">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form" id="rule-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="flash error">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.name %}
+      {% include "core/_field.html" with field=form.active %}
+    </div>
+    {% include "core/_field.html" with field=form.description %}
+    {{ form.conditions }}{{ form.actions }}
+
+    <section class="rule-block">
+      <h2><span class="rule-word">When</span> this happens</h2>
+      <div class="field{% if form.trigger.errors %} has-error{% endif %}">{{ form.trigger }}{{ form.trigger.errors }}</div>
+    </section>
+
+    <section class="rule-block">
+      <h2><span class="rule-word">If</span> <small class="muted">(optional, all must hold)</small></h2>
+      <div id="conditions"></div>
+      <button type="button" class="btn small" id="btn-add-condition">+ Add condition</button>
+    </section>
+
+    <section class="rule-block">
+      <h2><span class="rule-word">Then</span> do this, in order</h2>
+      <div id="steps"></div>
+      <button type="button" class="btn small" id="btn-add-step">+ Add step</button>
+      <p class="muted hint">In texts, <code>{object}</code> is the record that triggered the rule and <code>{source}</code> the record
+        the chain started from: for "All tasks created by a rule are done", that's e.g. the order the tasks were made for.
+        If a step fails, the rule's other steps are undone and the failure shows in the run log.</p>
+    </section>
+
+    <div class="actions">
+      <button class="btn primary">Save rule</button>
+      <a class="btn" href="{% if rule.pk %}{{ rule.get_absolute_url }}{% else %}{% url 'automations:list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{ catalogue|json_script:"rule-catalogue" }}
+<script src="{% versioned_static 'automations/builder.js' %}"></script>
+{% endblock %}

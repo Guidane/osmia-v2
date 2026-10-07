@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+{% with t=tool %}
+<div class="toolbar">
+  <h1>{{ t.name }}{% if t.part_number %} <span class="muted">· {{ t.part_number }}</span>{% endif %}{% if not t.is_active %} <span class="badge off">Retired</span>{% endif %}</h1>
+  <a class="btn" href="{% url 'tools:edit' t.pk %}">Edit</a>
+</div>
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Used with these parts</h2>
+      <table class="list">
+        <thead><tr><th>Part number</th><th>Description</th><th>Category</th></tr></thead>
+        <tbody>
+        {% for p in parts %}
+          <tr><td>{% cover_thumb p 28 %} <a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a></td><td>{{ p.name }}</td><td>{{ p.category|default:"—" }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">No parts yet. Pick this tool under "Tools" on a part's edit page.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% if t.notes %}<section class="card panel"><h2>Notes</h2>{{ t.notes|linebreaks }}</section>{% endif %}
+  </div>
+  <div>
+    {% image_gallery t %}
+    <section class="card">
+      <dl class="props">
+        <dt>Type</dt><dd>{{ t.get_kind_display }}</dd>
+        <dt>Part number</dt><dd>{{ t.part_number|default:"—" }}</dd>
+        <dt>Manufacturer</dt><dd>{{ t.manufacturer|default:"—" }}</dd>
+        <dt>Asset tag</dt><dd>{{ t.asset_tag|default:"—" }}</dd>
+        <dt>Kept at</dt><dd>{{ t.storage|default:"—" }}</dd>
+        <dt>Responsible</dt><dd>{% if t.responsible %}<a href="{{ t.responsible.get_absolute_url }}">{{ t.responsible }}</a>{% else %}—{% endif %}</dd>
+        <dt>Calibration due</dt><dd>{{ t.calibration_due|date|default:"—" }}</dd>
+      </dl>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

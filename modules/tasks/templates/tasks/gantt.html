@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Gantt</h1>
+  {% include "tasks/_filters.html" %}
+  <a class="btn primary" href="{% url 'tasks:create' %}">New task</a>
+</div>
+
+<div class="toolbar">
+  <a class="btn" href="{% querystring start=prev_start %}">‹ Earlier</a>
+  <a class="btn" href="{% querystring start=None %}">Today</a>
+  <a class="btn" href="{% querystring start=next_start %}">Later ›</a>
+  <strong>{{ window_start|date:"M j" }} – {{ window_end|date:"M j, Y" }}</strong>
+  <span class="spacer"></span>
+  <span class="muted">Show</span>
+  {% for w in week_choices %}
+    <a class="btn small{% if w == selected_weeks %} primary{% endif %}" href="{% querystring weeks=w %}">{{ w }} weeks</a>
+  {% endfor %}
+</div>
+
+<div class="gantt">
+  <div class="gantt-grid" style="--weeks: {{ selected_weeks }}">
+    <div class="gantt-row gantt-head">
+      <div class="gantt-label">Task</div>
+      <div class="gantt-track">
+        {% for w in weeks %}<span class="gantt-week" style="left: {{ w.left }}%">{{ w.monday|date:"M j" }}</span>{% endfor %}
+        {% if today_left %}<span class="gantt-today-label" style="left: {{ today_left }}%">Today</span>{% endif %}
+      </div>
+    </div>
+
+    {% for r in rows %}
+    <div class="gantt-row">
+      <div class="gantt-label">
+        <a href="{{ r.task.get_absolute_url }}">{{ r.task.title }}</a>
+        <small class="muted">{{ r.task.assignee|default:"Unassigned" }}</small>
+      </div>
+      <div class="gantt-track">
+        {% if today_left %}<span class="gantt-today" style="left: {{ today_left }}%"></span>{% endif %}
+        <a href="{{ r.task.get_absolute_url }}"
+           class="gantt-bar {{ r.task.status }}{% if r.task.is_overdue %} overdue-bar{% endif %}{% if r.clipped_start %} clip-start{% endif %}{% if r.clipped_end %} clip-end{% endif %}{% if r.estimated_start %} estimated{% endif %}"
+           style="left: {{ r.left }}%; width: {{ r.width }}%"
+           title="{{ r.task.title }} · {{ r.start|date:'M j' }} → {{ r.end|date:'M j' }}{% if r.estimated_start %} (no start date; starts when created){% endif %} · {{ r.task.get_status_display }}">
+          {{ r.task.assignee.first_name|default:r.task.assignee.username|default:"" }}
+        </a>
+      </div>
+    </div>
+    {% empty %}
+    <div class="gantt-row"><div class="gantt-label muted">No scheduled tasks in this period.</div><div class="gantt-track"></div></div>
+    {% endfor %}
+  </div>
+</div>
+
+<p class="muted gantt-legend">
+  <span class="gantt-swatch todo"></span> To do
+  <span class="gantt-swatch in_progress"></span> In progress
+  <span class="gantt-swatch done"></span> Done
+  <span class="gantt-swatch overdue-bar"></span> Overdue
+  <span class="gantt-swatch estimated"></span> No start date set
+  {% if unscheduled %} · <a href="{% url 'tasks:list' %}?status=all">{{ unscheduled }} task{{ unscheduled|pluralize }} without dates</a>{% endif %}
+</p>
+{% endblock %}

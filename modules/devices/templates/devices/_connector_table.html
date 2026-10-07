@@ -1,0 +1,18 @@
+<table class="list">
+  <thead><tr><th>Connector</th><th title="The plug on the harness side">Harness plug</th><th>Physical connector</th><th>Function</th><th class="num">Pins</th><th>Signals</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for c in connectors %}
+    <tr>
+      <td><strong>{{ c.designator }}</strong> <span class="muted">{{ c.get_side_display|lower }}</span></td>
+      <td>{{ c.mating_designator }}</td>
+      <td>{% if c.part %}<a href="{{ c.part.get_absolute_url }}">{{ c.part.part_number }}</a>{% if c.part.name %} <span class="muted">{{ c.part.name }}</span>{% endif %}{% else %}—{% endif %}</td>
+      <td>{{ c.description }}</td>
+      <td class="num">{{ c.pins.all|length }}</td>
+      <td class="muted">{{ c.signal_summary|default:"—" }}</td>
+      {% if editable %}<td><a class="btn small" href="{% url 'devices:connector_edit' c.device_id c.pk %}">Edit pins</a></td>{% endif %}
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">No connectors yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

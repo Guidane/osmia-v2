@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card part-form-card">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form" id="part-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="part-form-grid">
+    <table class="form-table part-main">
+      <tbody>
+      {% for field in form.base_fields_bound %}
+        {% include "core/_field_row.html" %}
+        {% if field.name == 'part_number' %}
+          <tr class="lookup-tr">
+            <th></th>
+            <td>
+              <div class="lookup-row">
+                <button type="button" class="btn small" id="btn-lookup">🔎 Look up online</button>
+                <label class="muted"><input type="checkbox" id="lookup-overwrite"> Replace values I already entered</label>
+              </div>
+              <div id="lookup-result" hidden></div>
+            </td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <fieldset class="attribute-editor">
+      <legend>Attributes</legend>
+      <p class="muted" data-attr-empty>The selected category has no attributes. Add them on the <a href="{% url 'inventory:category_list' %}">Categories</a> page, or look the part up online.</p>
+      <table class="form-table" id="attribute-table">
+        {% for group in form.attribute_fields_bound %}
+          <tbody data-attr-category="{{ group.category.pk }}" hidden>
+            {% for field in group.fields %}{% include "core/_field_row.html" %}{% endfor %}
+          </tbody>
+        {% endfor %}
+      </table>
+    </fieldset>
+    </div>
+
+    <fieldset class="part-links-editor">
+      <legend>Goes with</legend>
+      {{ form.mates_with }}{{ form.fits }}
+      {{ form.mates_with.errors }}{{ form.fits.errors }}
+      <div class="link-lists">
+        <div>
+          <h3 title="{{ form.mates_with.help_text }}">Mates with</h3>
+          <ul class="chips" data-link="mates_with">
+            {% for p in form.mates_with_linked %}<li data-id="{{ p.pk }}"><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.part_number }}</a> <span class="muted">{{ p.name }}</span> <button type="button" class="chip-remove" title="Remove">✕</button></li>{% endfor %}
+          </ul>
+          <small class="muted">{{ form.mates_with.help_text }}</small>
+        </div>
+        <div>
+          <h3 title="{{ form.fits.help_text }}">Accepts</h3>
+          <ul class="chips" data-link="fits">
+            {% for p in form.fits_linked %}<li data-id="{{ p.pk }}"><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.part_number }}</a> <span class="muted">{{ p.name }}</span> <button type="button" class="chip-remove" title="Remove">✕</button></li>{% endfor %}
+          </ul>
+          <small class="muted">{{ form.fits.help_text }}</small>
+        </div>
+        <div>
+          <h3>Tools</h3>
+          <div class="tool-choices">{{ form.tools }}</div>
+          <small class="muted">{{ form.tools.help_text }} <a href="{% url 'tools:create' %}" target="_blank">New tool ↗</a></small>
+        </div>
+      </div>
+      <div class="link-add">
+        <span>Add a part as:</span>
+        <label class="check"><input type="radio" name="link-target" value="mates_with" checked form="none"> Mates with</label>
+        <label class="check"><input type="radio" name="link-target" value="fits" form="none"> Accepts</label>
+      </div>
+      {% include "inventory/_part_picker.html" with picker_id="link-picker" add_label="Add" exclude=form.instance.pk %}
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'inventory:part_list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  // "Goes with": picked parts become chips and are selected in the hidden fields.
+  (function () {
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const select = name => document.querySelector(`select[name="${name}"]`);
+    document.getElementById('link-picker').addEventListener('part-picked', e => {
+      const part = e.detail;
+      const name = document.querySelector('input[name=link-target]:checked').value;
+      const s = select(name);
+      let opt = [...s.options].find(o => o.value === String(part.id));
+      if (!opt) { opt = new Option(part.part_number, part.id); s.appendChild(opt); }
+      if (opt.selected) return;
+      opt.selected = true;
+      const list = document.querySelector(`ul.chips[data-link="${name}"]`);
+      list.insertAdjacentHTML('beforeend', `<li data-id="${part.id}"><a href="${esc(part.url)}" target="_blank">${esc(part.part_number)}</a> <span class="muted">${esc(part.name)}</span> <button type="button" class="chip-remove" title="Remove">✕</button></li>`);
+    });
+    document.querySelectorAll('ul.chips').forEach(list => list.addEventListener('click', e => {
+      if (!e.target.closest('.chip-remove')) return;
+      const li = e.target.closest('li');
+      const opt = [...select(list.dataset.link).options].find(o => o.value === li.dataset.id);
+      if (opt) opt.selected = false;
+      li.remove();
+    }));
+  })();
+
+  (function () {
+    const form = document.getElementById('part-form');
+    const category = document.getElementById('{{ form.category.id_for_label }}');
+    const partNumber = document.getElementById('{{ form.part_number.id_for_label }}');
+    const empty = document.querySelector('[data-attr-empty]');
+    const box = document.getElementById('lookup-result');
+    const overwrite = document.getElementById('lookup-overwrite');
+    const lookupUrl = "{% url 'inventory:part_lookup' %}";
+    const addAttributesUrl = id => "{% url 'inventory:category_add_attributes' 0 %}".replace('/0/', `/${id}/`);
+    const csrf = form.querySelector('[name=csrfmiddlewaretoken]').value;
+    let found = null;  // the last lookup result
+
+    // Show only the attribute fields of the selected category.
+    function syncGroups() {
+      let shown = false;
+      document.querySelectorAll('[data-attr-category]').forEach(g => {
+        g.hidden = g.dataset.attrCategory !== category.value;
+        shown = shown || (!g.hidden && g.querySelector('input'));
+      });
+      empty.hidden = !!shown;
+    }
+    category.addEventListener('change', () => { syncGroups(); if (found) apply(found); });
+    syncGroups();
+
+    // --- Online lookup -------------------------------------------------------
+    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+
+    function groupFor(categoryId) {
+      let group = document.querySelector(`[data-attr-category="${categoryId}"]`);
+      if (!group) {
+        group = document.createElement('tbody');
+        group.dataset.attrCategory = categoryId;
+        document.getElementById('attribute-table').appendChild(group);
+      }
+      return group;
+    }
+
+    function attributeInputs() {
+      const group = document.querySelector(`[data-attr-category="${category.value}"]`);
+      return group ? [...group.querySelectorAll('input[data-attr-name]')] : [];
+    }
+
+    function fill(input, value) {
+      if (!input || !value) return false;
+      if (input.value.trim() && !overwrite.checked) return false;
+      input.value = value;
+      return true;
+    }
+
+    // Only the part's attributes are filled in; nothing else on the form changes.
+    function apply(part) {
+      const byName = new Map(attributeInputs().map(i => [norm(i.dataset.attrName), i]));
+      const rows = Object.entries(part.attributes).map(([name, value]) => {
+        const input = byName.get(norm(name));
+        const status = !input ? 'missing' : (fill(input, value) ? 'filled' : (input.value.trim() === value ? 'filled' : 'kept'));
+        return { name, value, status };
+      });
+      render(part, rows);
+    }
+
+    function render(part, rows) {
+      const missing = rows.filter(r => r.status === 'missing');
+      const catName = category.value ? category.options[category.selectedIndex].text : '';
+      const links = [
+        part.product_url ? `<a href="${esc(part.product_url)}" target="_blank" rel="noopener">${esc(part.source)} page</a>` : '',
+        part.datasheet_url ? `<a href="${esc(part.datasheet_url)}" target="_blank" rel="noopener">datasheet</a>` : '',
+      ].filter(Boolean).join(' · ');
+      const statusText = { filled: '✓ filled', kept: 'kept your value', missing: 'not in this category' };
+      box.className = 'lookup-box';
+      box.innerHTML = `
+        <p><strong>${esc(part.manufacturer_part_number || part.part_number)}</strong> ${part.manufacturer ? 'by ' + esc(part.manufacturer) : ''}
+          <span class="muted">· ${esc(part.source)}</span><br>${esc(part.description)}
+          ${links ? '<br><small>' + links + '</small>' : ''}</p>
+        <p class="muted">${rows.filter(r => r.status === 'filled').length} of ${rows.length} attributes matched.</p>
+        <table class="list compact"><thead><tr><th>Attribute</th><th>Value</th><th></th></tr></thead><tbody>
+          ${rows.map(r => `<tr class="lookup-${r.status}"><td>${esc(r.name)}</td><td>${esc(r.value)}</td><td class="muted">${statusText[r.status]}</td></tr>`).join('')}
+        </tbody></table>
+        ${missing.length && category.value
+          ? `<button type="button" class="btn small" id="btn-add-missing">Add ${missing.length} missing attribute${missing.length === 1 ? '' : 's'} to ${esc(catName)} and fill them</button>`
+          : (missing.length ? '<p class="muted">Pick a category to fill attributes, or to add these to it.</p>' : '')}`;
+      box.hidden = false;
+      const addBtn = document.getElementById('btn-add-missing');
+      if (addBtn) addBtn.onclick = () => addMissing(missing.map(r => r.name));
+    }
+
+    async function addMissing(names) {
+      const res = await fetch(addAttributesUrl(category.value), {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ names }),
+      });
+      if (!res.ok) { showError('Could not add the attributes to the category.'); return; }
+      const group = groupFor(category.value);
+      for (const attr of (await res.json()).attributes) {
+        if (form.querySelector(`[name="attr_${attr.id}"]`)) continue;
+        const row = document.createElement('tr');
+        row.innerHTML = `<th><label for="id_attr_${attr.id}">${esc(attr.name)}</label></th>`
+          + `<td><input type="text" name="attr_${attr.id}" id="id_attr_${attr.id}" maxlength="200" data-attr-name="${esc(attr.name)}"></td>`;
+        group.appendChild(row);
+      }
+      syncGroups();
+      apply(found);
+    }
+
+    function showError(message) {
+      box.className = 'lookup-box error';
+      box.innerHTML = `<p>${esc(message)}</p>`;
+      box.hidden = false;
+    }
+
+    document.getElementById('btn-lookup').onclick = async () => {
+      const number = partNumber.value.trim();
+      if (!number) { showError('Enter a part number first.'); partNumber.focus(); return; }
+      const btn = document.getElementById('btn-lookup');
+      btn.disabled = true;
+      btn.textContent = 'Looking up…';
+      try {
+        const res = await fetch(`${lookupUrl}?part_number=${encodeURIComponent(number)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok) { showError(data.error || 'Lookup failed.'); return; }
+        found = data.part;
+        apply(found);
+      } catch (e) {
+        showError('Lookup failed: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔎 Look up online';
+      }
+    };
+  })();
+</script>
+{% endblock %}

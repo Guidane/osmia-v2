@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+{% with rule=object %}
+<div class="toolbar">
+  <h1>{{ rule.name }} {% if rule.active %}<span class="badge done">On</span>{% else %}<span class="badge off">Off</span>{% endif %}</h1>
+  {% if perms.automations.change_rule %}
+    <form method="post" action="{% url 'automations:toggle' rule.pk %}">{% csrf_token %}<button class="btn">{% if rule.active %}Turn off{% else %}Turn on{% endif %}</button></form>
+    <a class="btn" href="{% url 'automations:edit' rule.pk %}">Edit</a>
+  {% endif %}
+  {% if perms.automations.delete_rule %}<a class="btn" href="{% url 'automations:delete' rule.pk %}">Delete</a>{% endif %}
+</div>
+{% if rule.description %}<p>{{ rule.description }}</p>{% endif %}
+<section class="card rule-summary">
+  <div class="rule-part"><span class="rule-word">When</span> {{ rule.trigger_label }}</div>
+  {% if conditions %}
+    <div class="rule-part"><span class="rule-word">If</span>
+      <ul>{% for c in conditions %}<li>{{ c }}{% if not forloop.last %} <small class="muted">and</small>{% endif %}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+  <div class="rule-part"><span class="rule-word">Then</span>
+    <ol>
+    {% for label, settings in steps %}
+      <li><strong>{{ label }}</strong>{% if settings %}<ul>{% for s in settings %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}</li>
+    {% endfor %}
+    </ol>
+  </div>
+</section>
+<section class="card panel">
+  <h2>Recent runs</h2>
+  {% include "automations/_run_table.html" %}
+  <p><a href="{% url 'automations:runs' %}">Full run log</a></p>
+</section>
+{% endwith %}
+{% endblock %}

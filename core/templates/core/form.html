@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% comment %}Generic create/edit page shared by all modules. Pass `heading` and optionally `cancel_url`,
+and `extra_forms` for fields other modules add (shown after the form's own).{% endcomment %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+    {% for extra in extra_forms %}{{ extra.non_field_errors }}{% for field in extra %}{% include "core/_field.html" %}{% endfor %}{% endfor %}
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      {% if cancel_url %}<a class="btn" href="{{ cancel_url }}">Cancel</a>
+      {% elif current_module %}<a class="btn" href="{% url current_module.home_url_name %}">Cancel</a>
+      {% else %}<a class="btn" href="{% url 'core:home' %}">Cancel</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

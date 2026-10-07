@@ -1,0 +1,14 @@
+{
+  "label": "orders",
+  "title": "Orders",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Purchase orders against budgets; receiving books the parts into stock.",
+  "icon": "🧾",
+  "sequence": 35,
+  "depends": ["users", "inventory", "stock", "budgets", "vendors"],
+  "menu": [
+    {"label": "Orders", "url": "orders:list"},
+    {"label": "New order", "url": "orders:create"}
+  ]
+}

@@ -1,0 +1,1 @@
+<a class="bell{% if unread %} unread{% endif %}" href="{{ url }}" title="{% if unread %}{{ unread }} unread notification{{ unread|pluralize }}{% else %}Notifications{% endif %}">🔔{% if unread %}<span class="count">{{ unread }}</span>{% endif %}</a>

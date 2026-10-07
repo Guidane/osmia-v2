@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+{% with a=assembly %}
+<div class="toolbar">
+  <h1>{{ a.name }} <span class="muted">v{{ a.version }} · rev {{ a.revision }}</span> {% include "assemblies/_status.html" %}</h1>
+  <form method="post" action="{% url 'assemblies:create_build_task' a.pk %}">{% csrf_token %}<button class="btn">New build task</button></form>
+  <a class="btn" href="{% url 'assemblies:edit' a.pk %}">Edit</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    {# Panels contributed by other modules, e.g. a device's connectors #}
+    {% include "core/panels.html" %}
+    <section class="card panel">
+      <h2>Components</h2>
+      <table class="list">
+        <thead><tr><th>Part or sub-assembly</th><th>Kind</th><th class="num">Qty</th></tr></thead>
+        <tbody>
+        {% for c in components %}
+          <tr>
+            <td><a href="{{ c.item.get_absolute_url }}">{{ c.item }}</a></td>
+            <td>{% if c.part %}Part{% else %}Sub-assembly · {{ c.child_assembly.get_assembly_type_display }}{% endif %}</td>
+            <td class="num">{{ c.quantity|floatformat:"-3" }}{% if c.part %} {{ c.part.unit }}{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">No components yet. <a href="{% url 'assemblies:edit' a.pk %}">Add some</a>.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card panel">
+      <h2>Structure</h2>
+      <p class="muted">Full bill of materials with sub-assemblies expanded. "Total" is the quantity needed for one {{ a.name }}.</p>
+      <table class="list">
+        <thead><tr><th>Item</th><th class="num">Per parent</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for row in structure %}
+          <tr>
+            <td style="padding-left: calc(12px + {{ row.indent }}px)">
+              {% if row.depth %}<span class="muted">└ </span>{% endif %}
+              <a href="{{ row.component.item.get_absolute_url }}">{{ row.component.item }}</a>
+              {% if row.component.child_assembly %}<span class="badge">assembly</span>{% endif %}
+            </td>
+            <td class="num">{{ row.component.quantity|floatformat:"-3" }}</td>
+            <td class="num">{{ row.total|floatformat:"-3" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">Empty.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card panel">
+      <h2>Parts needed
+        {% if buildable is not None %}<span class="badge {% if buildable %}done{% else %}warn{% endif %}">Stock covers {{ buildable }} build{{ buildable|pluralize }}</span>{% endif %}
+      </h2>
+      {% include "assemblies/_totals.html" %}
+    </section>
+
+    {% if a.build_instructions %}
+    <section class="card panel"><h2>Build instructions</h2>{{ a.build_instructions|linebreaks }}</section>
+    {% endif %}
+    {% if a.usage_instructions %}
+    <section class="card panel"><h2>Usage instructions</h2>{{ a.usage_instructions|linebreaks }}</section>
+    {% endif %}
+  </div>
+
+  <div>
+    {% image_gallery a %}
+    <section class="card">
+      <dl class="props">
+        <dt>Type</dt><dd>{{ a.get_assembly_type_display }}</dd>
+        <dt>Status</dt><dd>{{ a.get_status_display }}</dd>
+        <dt>Version</dt><dd>{{ a.version }}</dd>
+        <dt>Revision</dt><dd>{{ a.revision }} <small class="muted">(goes up when components or version change)</small></dd>
+        <dt>Updated</dt><dd>{{ a.updated_at|date }}</dd>
+      </dl>
+    </section>
+
+    <section class="card panel">
+      <h2>Used in</h2>
+      {% for u in used_in %}
+        <p><a href="{{ u.assembly.get_absolute_url }}">{{ u.assembly }}</a> <span class="muted">× {{ u.quantity|floatformat:"-3" }}</span></p>
+      {% empty %}
+        <p class="muted">Not used in another assembly.</p>
+      {% endfor %}
+    </section>
+
+    <section class="card panel">
+      <h2>Tasks</h2>
+      {% for t in tasks %}
+        <p><a href="{{ t.get_absolute_url }}">{{ t.title }}</a> <span class="badge {{ t.status }}">{{ t.get_status_display }}</span>
+          <br><small class="muted">{{ t.assignee|default:"Unassigned" }}{% if t.due_date %} · due {{ t.due_date|date }}{% endif %}</small></p>
+      {% empty %}
+        <p class="muted">No tasks linked.</p>
+      {% endfor %}
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

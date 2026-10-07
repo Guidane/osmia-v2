@@ -1,0 +1,16 @@
+{
+  "label": "stock",
+  "title": "Stock",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "How many of each part are where: locations, receipts, issues, counts and moves.",
+  "icon": "🏷️",
+  "sequence": 32,
+  "depends": ["users", "tasks", "inventory"],
+  "menu": [
+    {"label": "Stock", "url": "stock:list"},
+    {"label": "Moves", "url": "stock:move_list"},
+    {"label": "Locations", "url": "stock:location_list"},
+    {"label": "New move", "url": "stock:move_create"}
+  ]
+}

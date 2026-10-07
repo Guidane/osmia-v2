@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load osmia_static %}
+{% block content %}
+<div class="card loc-gen">
+  <h1>Generate locations</h1>
+  <p class="muted">Describe the levels from the top down, e.g. 4 rack rows, each with 6 racks, each with 4 shelves.
+    Every location gets a name ("Shelf A") and a label ("A"); its code joins the labels down the tree, so rack row A, rack 1, shelf A is <code>A1A</code>.
+    Locations that already exist (same place, same label) are kept, so you can run this again to add more.</p>
+  {% if errors %}<div class="flash error">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+  <form method="post" id="gen-form">
+    {% csrf_token %}
+    <div class="field">
+      <label for="gen-parent">Inside</label>
+      <select name="parent" id="gen-parent">
+        <option value="">Top level (no parent)</option>
+        {% for loc in locations %}<option value="{{ loc.pk }}" {% if parent and loc.pk == parent.pk %}selected{% endif %}>{{ loc }}</option>{% endfor %}
+      </select>
+    </div>
+    <table class="list compact gen-levels">
+      <thead><tr><th></th><th>Level name</th><th>How many</th><th>Labels</th><th>Start at</th><th></th></tr></thead>
+      <tbody id="gen-rows">
+      {% for r in rows %}
+        <tr>
+          <td class="muted level-no">{{ forloop.counter }}</td>
+          <td><input type="text" data-key="name" value="{{ r.name }}" placeholder="e.g. Shelf"></td>
+          <td><input type="number" data-key="count" value="{{ r.count }}" min="1" max="500" class="count"></td>
+          <td><select data-key="style">{% for value, label in styles.items %}<option value="{{ value }}" {% if r.style == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+          <td><input type="text" data-key="start" value="{{ r.start }}" placeholder="A or 1" class="start"></td>
+          <td><button type="button" class="btn small remove" title="Remove level">✕</button></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn small" id="gen-add">+ Add level</button>
+
+    <div class="gen-preview card">
+      <h2>Preview</h2>
+      <div id="gen-summary"></div>
+      <div id="gen-example" class="muted"></div>
+      <div id="gen-codes"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="gen-submit">Generate</button>
+      <a class="btn" href="{% if parent %}{{ parent.get_absolute_url }}{% else %}{% url 'stock:location_list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{ codes|json_script:"gen-parent-codes" }}
+<script>window.GEN_MAX = {{ max_locations }};</script>
+<script src="{% versioned_static 'stock/location_generate.js' %}"></script>
+{% endblock %}

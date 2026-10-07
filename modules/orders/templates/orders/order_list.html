@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="toolbar">
+  <h1>Orders</h1>
+  <form method="get">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+  <a class="btn primary" href="{% url 'orders:create' %}">New order</a>
+</div>
+<table class="list">
+  <thead><tr><th>Order</th><th>Supplier</th><th>Status</th><th>Budget</th><th class="num">Lines</th><th class="num">Total</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for o in object_list %}
+    <tr>
+      <td><a href="{{ o.get_absolute_url }}">{{ o.number }}</a></td>
+      <td>{{ o.supplier|default:"—" }}</td>
+      <td>{% include "orders/_status.html" %}</td>
+      <td>{{ o.budget|default:"—" }}</td>
+      <td class="num">{{ o.lines.all|length }}</td>
+      <td class="num">{{ o.total|floatformat:2|intcomma }}</td>
+      <td>{{ o.created_at|date }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">No orders yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

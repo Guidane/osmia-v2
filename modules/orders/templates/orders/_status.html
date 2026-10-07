@@ -1,0 +1,1 @@
+<span class="badge {% if o.status == 'placed' %}in_progress{% elif o.status == 'partial' %}warn{% elif o.status == 'received' %}done{% elif o.status == 'cancelled' %}off{% endif %}">{{ o.get_status_display }}</span>

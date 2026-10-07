@@ -1,0 +1,24 @@
+<table class="list">
+  <thead><tr><th>Date</th>{% if not hide_part %}<th>Part</th>{% endif %}<th>Type</th><th>Where</th><th class="num">Change</th>{% if not hide_task %}<th>Task</th>{% endif %}<th>By</th><th>Note</th></tr></thead>
+  <tbody>
+  {% for m in moves %}
+    <tr>
+      <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+      {% if not hide_part %}<td><a href="{{ m.part.get_absolute_url }}">{{ m.part }}</a></td>{% endif %}
+      <td><span class="badge {% if m.move_type == 'transfer' %}in_progress{% elif m.delta > 0 %}in{% elif m.delta < 0 %}out{% endif %}">{{ m.get_move_type_display }}</span></td>
+      {% if m.move_type == 'transfer' %}
+        <td>{% include "stock/_loc_short.html" with loc=m.from_location %} → {% include "stock/_loc_short.html" with loc=m.to_location %}</td>
+        <td class="num">—</td>
+      {% else %}
+        <td>{% include "stock/_loc_short.html" with loc=m.location %}</td>
+        <td class="num">{% if m.delta > 0 %}+{% endif %}{{ m.delta|floatformat:"-2" }} {{ m.part.unit }}</td>
+      {% endif %}
+      {% if not hide_task %}<td>{% if m.task %}<a href="{{ m.task.get_absolute_url }}">{{ m.task }}</a>{% else %}—{% endif %}</td>{% endif %}
+      <td>{{ m.user|default:"—" }}</td>
+      <td>{{ m.note }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="8" class="muted">No stock moves.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

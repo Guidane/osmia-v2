@@ -1,0 +1,15 @@
+I'm receiving purchase order {{ order.number }}{% if order.supplier %} (supplier: {{ order.supplier }}){% endif %}. Read the attached shipping document (delivery note, packing slip or invoice) and tell me what was delivered, as a CSV table I can paste into our system.
+
+Rules for the table:
+- The first line is exactly: Part number,Quantity,Location
+- One row per delivered item. Leave out items that weren't delivered (back-ordered, cancelled).
+- Part number: use OUR part number from the list below. Match each item on the document to it by the manufacturer or supplier part number, or by the description. If an item matches none of them, use the part number printed on the document.
+- Quantity: the quantity delivered (shipped), not the quantity ordered. A plain number with a dot for decimals: no units, no thousands separators.
+- Location: leave it empty.
+- Put a value in double quotes if it contains a comma.
+- Reply with the CSV only: no explanation, no totals, no markdown code fences. If you are unsure about a row, still include it; I'll check the result.
+- If nothing on the document was delivered, reply with just the first line.
+
+Open lines on this order (our part number | description | quantity ordered):
+{% for line in lines %}- {{ line.part.part_number }} | {{ line.part.name }} | {{ line.quantity|floatformat:"-6u" }} {{ line.part.unit }}
+{% endfor %}

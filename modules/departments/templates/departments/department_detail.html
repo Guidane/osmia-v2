@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>{% for a in department.ancestors %}{% if not forloop.last %}<a class="muted" href="{{ a.get_absolute_url }}">{{ a.name }}</a> › {% endif %}{% endfor %}{{ department.name }}</h1>
+  {% if perms.departments.add_department %}<a class="btn" href="{% url 'departments:create' %}?parent={{ department.pk }}">Add sub-department</a>{% endif %}
+  {% if perms.departments.change_department %}<a class="btn" href="{% url 'departments:edit' department.pk %}">Edit</a>{% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Members <span class="muted">(including sub-departments)</span></h2>
+      <table class="list">
+        <thead><tr><th>Name</th><th>Job title</th><th>Department</th></tr></thead>
+        <tbody>
+        {% for p in members %}
+          <tr>
+            <td><a href="{{ p.get_absolute_url }}">{{ p }}</a></td>
+            <td>{{ p.job_title }}</td>
+            <td>{{ p.department_membership.department.name }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">No members.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {# Panels contributed by other modules, e.g. budgets #}
+    {% include "core/panels.html" %}
+  </div>
+  <section class="card panel">
+    <h2>Sub-departments</h2>
+    {% for c in children %}
+      <p><a href="{{ c.get_absolute_url }}">{{ c.name }}</a></p>
+    {% empty %}
+      <p class="muted">None.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

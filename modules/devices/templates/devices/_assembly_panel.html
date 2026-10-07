@@ -1,0 +1,8 @@
+{% if device %}
+  <p><a href="{{ device.get_absolute_url }}"><strong>{{ device.name }}</strong></a> <span class="badge">v{{ device.version }}</span></p>
+  {% include "devices/_connector_table.html" %}
+  <p><a href="{% url 'devices:connector_create' device.pk %}">+ Add connector</a></p>
+{% else %}
+  <p class="muted">This assembly is a device, but its connectors aren't defined yet.</p>
+  <form method="post" action="{% url 'devices:from_assembly' assembly.pk %}">{% csrf_token %}<button class="btn small primary">Define connectors</button></form>
+{% endif %}

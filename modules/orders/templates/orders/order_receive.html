@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load osmia_static %}
+{% block content %}
+<div class="card">
+  <h1>Receive {{ order.number }}{% if order.supplier %} <span class="muted">· {{ order.supplier }}</span>{% endif %}</h1>
+  <p class="muted">Tick the lines that came in and pick where each is put away. Ticked lines are booked into stock at their
+    location; lines left unticked stay open, and the order is "Partly received" until they come in too.</p>
+  <details class="receive-import" id="receive-import">
+    <summary>Receive from a table (e.g. read off the delivery note by an AI)</summary>
+    <ol class="muted">
+      <li>Press <strong>Copy AI instructions</strong> and paste them into your AI assistant, together with the shipping document (PDF or photo).</li>
+      <li>Paste the table it returns below, or type one yourself: <code>Part number,Quantity,Location</code>, one row per item.</li>
+      <li>Press <strong>Read table</strong>: the lines that came in are ticked. Check them, then press <strong>Receive ticked lines</strong>.</li>
+    </ol>
+    <textarea rows="6" spellcheck="false" placeholder="Part number,Quantity,Location&#10;DB25-F,20,A1A"></textarea>
+    <div class="actions">
+      <button type="button" class="btn small btn-copy">Copy AI instructions</button>
+      <button type="button" class="btn small primary btn-read">Read table</button>
+    </div>
+    <ul class="import-notes"></ul>
+    <textarea id="ai-instructions" hidden readonly>{% include "orders/_receive_ai_instructions.txt" %}</textarea>
+  </details>
+  <form method="post" class="form" id="receive-form">
+    {% csrf_token %}
+    <div class="receive-all">
+      <label>Put everything at
+        <select id="all-location">
+          <option value="">No location (put away later)</option>
+          {% for loc in locations %}<option value="{{ loc.pk }}">{% if loc.code %}{{ loc.code }} · {% endif %}{{ loc.full_path }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="button" class="btn small" id="btn-all-location">Set for all lines</button>
+      <button type="button" class="btn small" id="btn-tick-all">Tick all</button>
+    </div>
+    <table class="list">
+      <thead><tr><th>Received</th><th>Part</th><th class="num">Quantity</th><th>Put away at</th></tr></thead>
+      <tbody>
+      {% for line in lines %}
+        <tr data-line="{{ line.pk }}" data-part="{{ line.part.part_number }}" data-qty="{{ line.quantity|floatformat:'-6u' }}">
+          <td><input type="checkbox" name="receive-{{ line.pk }}" value="1" aria-label="Received {{ line.part.part_number }}"></td>
+          <td><a href="{{ line.part.get_absolute_url }}" target="_blank">{{ line.part.part_number }}</a> <span class="muted">{{ line.part.name }}</span></td>
+          <td class="num">{{ line.quantity|floatformat:"-2" }} {{ line.part.unit }}</td>
+          <td><select name="location-{{ line.pk }}" class="line-location">
+            <option value="">No location (put away later)</option>
+            {% for loc in locations %}<option value="{{ loc.pk }}" data-code="{{ loc.code|default:'' }}" data-path="{{ loc.full_path }}">{% if loc.code %}{{ loc.code }} · {% endif %}{{ loc.full_path }}</option>{% endfor %}
+          </select></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if received %}
+      <h2>Already received</h2>
+      <ul class="muted">{% for line in received %}<li>{{ line }} · {{ line.received_at|date:"Y-m-d" }} at {{ line.location|default:"no location" }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="actions">
+      <button class="btn primary">Receive ticked lines</button>
+      <a class="btn" href="{{ order.get_absolute_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  (function () {
+    const form = document.getElementById('receive-form');
+    document.getElementById('btn-all-location').addEventListener('click', () => {
+      const value = document.getElementById('all-location').value;
+      form.querySelectorAll('select.line-location').forEach(s => { s.value = value; });
+    });
+    document.getElementById('btn-tick-all').addEventListener('click', () => {
+      const boxes = [...form.querySelectorAll('input[type=checkbox][name^="receive-"]')];
+      const all = boxes.every(b => b.checked);
+      boxes.forEach(b => { b.checked = !all; });
+    });
+  })();
+</script>
+<script src="{% versioned_static 'orders/receive_import.js' %}"></script>
+{% endblock %}

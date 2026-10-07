@@ -1,0 +1,16 @@
+{
+  "label": "audit",
+  "title": "Audit",
+  "version": "1.1.0",
+  "osmia": ">=2.0",
+  "description": "Every change to every module, who made it, and chains of changes across modules.",
+  "icon": "🔍",
+  "sequence": 95,
+  "depends": ["users"],
+  "menu": [
+    {"label": "Log", "url": "audit:list"},
+    {"label": "Chains", "url": "audit:chains"},
+    {"label": "Activity", "url": "audit:activity"},
+    {"label": "Settings", "url": "audit:settings"}
+  ]
+}

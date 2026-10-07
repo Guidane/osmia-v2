@@ -1,0 +1,14 @@
+{
+  "label": "budgets",
+  "title": "Budgets",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Department budgets and what tasks spend against them.",
+  "icon": "💰",
+  "sequence": 50,
+  "depends": ["users", "departments", "tasks"],
+  "menu": [
+    {"label": "Budgets", "url": "budgets:list"},
+    {"label": "New budget", "url": "budgets:create"}
+  ]
+}

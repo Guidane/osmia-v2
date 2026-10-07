@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  {% if projects %}
+    <h1>{{ device }} can't be removed</h1>
+    <p>It's used in {{ projects|length }} harness project{{ projects|length|pluralize }}. Take it out of
+      {% if projects|length == 1 %}that project{% else %}those projects{% endif %} first (select it in the designer and delete it, then save), then remove it here.</p>
+    <ul>{% for p in projects %}<li><a href="{{ p.get_absolute_url }}">{{ p.name }}</a></li>{% endfor %}</ul>
+    <div class="actions"><a class="btn" href="{{ device.get_absolute_url }}">Back</a></div>
+  {% else %}
+    <h1>Remove {{ device }}?</h1>
+    <p>Its connectors, pins, pinout images and version history are removed too. {% if device.assembly %}Its assembly
+      <a href="{{ device.assembly.get_absolute_url }}">{{ device.assembly }}</a> stays.{% endif %} This cannot be undone.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn danger">Remove device</button>
+        <a class="btn" href="{{ device.get_absolute_url }}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

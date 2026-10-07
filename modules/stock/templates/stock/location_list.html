@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load osmia_images osmia_static %}
+{% comment %}The location tree.{% endcomment %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ heading }}</h1>
+  <input type="search" class="tree-filter" placeholder="Filter…" aria-label="Filter {{ heading|lower }}" data-tree-filter="{{ filter_param }}">
+  <button type="button" class="btn small" data-tree-expand="{{ filter_param }}">Expand all</button>
+  <button type="button" class="btn small" data-tree-collapse="{{ filter_param }}">Collapse all</button>
+  {% if show_codes %}<a class="btn" href="{% url 'stock:location_generate' %}">Generate locations</a>{% endif %}
+  <a class="btn primary" href="{{ create_url }}">New</a>
+</div>
+<table class="list tree-table" data-tree="{{ filter_param }}">
+  <thead><tr><th>Name</th>{% if show_codes %}<th>Code</th>{% endif %}{% if show_attributes %}<th class="num">Attributes</th>{% endif %}<th class="num">Parts</th>{% if show_stock %}<th class="num" title="Total on hand, including sub-locations">Quantity</th><th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for node in object_list %}
+    <tr data-id="{{ node.pk }}" data-parent="{{ node.parent_id|default:'' }}" data-depth="{{ node.depth }}">
+      <td class="tree-name">
+        <span class="tree-indent" style="width: {% widthratio node.depth 1 20 %}px"></span><button type="button" class="tree-toggle" aria-label="Show or hide what's inside" hidden></button>
+        {% if show_images %}{% cover_thumb node 24 %} {% endif %}<a href="{{ node.get_absolute_url }}">{{ node.name }}</a>
+      </td>
+      {% if show_codes %}<td>{% if node.code %}<code>{{ node.code }}</code>{% endif %}</td>{% endif %}
+      {% if show_attributes %}<td class="num">{{ node.attribute_count }}</td>{% endif %}
+      <td class="num"><a href="{{ list_url }}?location={{ node.pk }}">{{ node.part_count }}</a></td>
+      {% if show_stock %}
+        <td class="num">{{ node.quantity|floatformat:"-2" }}</td>
+        <td class="row-actions">
+          {% if node.part_count %}
+            <button type="button" class="btn small" disabled title="Holds {{ node.part_count }} part{{ node.part_count|pluralize }}: move them before deleting">✕</button>
+          {% else %}
+            <form method="post" action="{% url 'stock:location_delete' node.pk %}"
+                  onsubmit="return confirm('Delete {{ node.full_path|escapejs }}{% if node.sub_count %} and its {{ node.sub_count }} sub-location{{ node.sub_count|pluralize }}{% endif %}?')">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn small remove" title="Delete{% if node.sub_count %} with its {{ node.sub_count }} sub-location{{ node.sub_count|pluralize }}{% endif %}">✕</button>
+            </form>
+          {% endif %}
+        </td>
+      {% endif %}
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">Nothing here yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<script src="{% versioned_static 'core/tree_table.js' %}"></script>
+{% endblock %}

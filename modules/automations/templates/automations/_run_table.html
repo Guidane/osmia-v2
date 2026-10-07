@@ -1,0 +1,17 @@
+<table class="list">
+  <thead><tr>{% if show_rule %}<th>Rule</th>{% endif %}<th>When</th><th>For</th><th>Result</th><th>What it did</th></tr></thead>
+  <tbody>
+  {% for run in runs %}
+    <tr{% if run.status == 'failed' %} class="warn"{% endif %}>
+      {% if show_rule %}<td><a href="{{ run.rule.get_absolute_url }}">{{ run.rule }}</a></td>{% endif %}
+      <td>{{ run.created_at|date:"DATETIME_FORMAT" }}</td>
+      <td>{% if run.object_url %}<a href="{{ run.object_url }}">{{ run.object_label }}</a>{% else %}{{ run.object_label }}{% endif %}
+        {% if run.source_label and run.source_label != run.object_label %}<br><small class="muted">from {% if run.source_url %}<a href="{{ run.source_url }}">{{ run.source_label }}</a>{% else %}{{ run.source_label }}{% endif %}</small>{% endif %}</td>
+      <td>{% if run.status == 'ok' %}<span class="badge done">Done</span>{% else %}<span class="badge high">Failed</span>{% endif %}</td>
+      <td class="run-log">{{ run.log|linebreaksbr }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">Nothing has run yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

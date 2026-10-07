@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>{{ heading }}</h1>
+  {% if assembly.pk %}<p class="muted">Revision {{ assembly.revision }}. Changing the components or the version creates a new revision.</p>{% endif %}
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+      {% for field in form %}{% if field.name != 'build_instructions' and field.name != 'usage_instructions' %}{% include "core/_field.html" %}{% endif %}{% endfor %}
+    </div>
+
+    <fieldset>
+      <legend>Components</legend>
+      {{ formset.management_form }}
+      {{ formset.non_form_errors }}
+      <table class="list compact">
+        <thead><tr><th>Part or sub-assembly</th><th>Qty</th><th></th></tr></thead>
+        <tbody id="component-rows">
+          {% for f in formset %}{% include "assemblies/_component_row.html" %}{% endfor %}
+        </tbody>
+      </table>
+      <template id="component-template">{% with f=formset.empty_form %}{% include "assemblies/_component_row.html" %}{% endwith %}</template>
+      <div class="sub-add">
+        <label>Add a sub-assembly
+          <select id="sub-assembly">
+            <option value="">Pick one…</option>
+            {% for a in sub_assemblies %}<option value="{{ a.pk }}" data-url="{{ a.get_absolute_url }}">{{ a }}</option>{% endfor %}
+          </select>
+        </label>
+        <span class="muted">Assemblies that already contain this one aren't offered, so nesting can't loop.</span>
+      </div>
+      <h3>Add parts</h3>
+      {% include "inventory/_part_picker.html" with picker_id="component-picker" add_label="Add to BOM" %}
+    </fieldset>
+
+    {% include "core/_field.html" with field=form.build_instructions %}
+    {% include "core/_field.html" with field=form.usage_instructions %}
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{% if assembly.pk %}{{ assembly.get_absolute_url }}{% else %}{% url 'assemblies:list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  // Parts from the picker and sub-assemblies from the list become BOM rows (or one more of an existing row).
+  (function () {
+    const total = document.getElementById('id_components-TOTAL_FORMS');
+    const rows = document.getElementById('component-rows');
+    const template = document.getElementById('component-template').innerHTML;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function add(ref, html) {
+      const existing = [...rows.children].find(tr => tr.dataset.ref === ref && !tr.hidden);
+      if (existing) {
+        const qty = existing.querySelector('input[name$="-quantity"]');
+        qty.value = (parseFloat(qty.value) || 0) + 1;
+        qty.focus();
+        return;
+      }
+      rows.insertAdjacentHTML('beforeend', template.replace(/__prefix__/g, total.value));
+      total.value = Number(total.value) + 1;
+      const tr = rows.lastElementChild;
+      tr.dataset.ref = ref;
+      tr.querySelector('input[name$="-component"]').value = ref;
+      tr.querySelector('.component-label').innerHTML = html;
+      const qty = tr.querySelector('input[name$="-quantity"]');
+      qty.value = 1;
+      qty.focus();
+      qty.select();
+    }
+    document.getElementById('component-picker').addEventListener('part-picked', e => {
+      const p = e.detail;
+      add(`p:${p.id}`, `<a href="${esc(p.url)}" target="_blank">${esc(p.part_number)}</a> <span class="muted">${esc(p.name)}</span>`);
+    });
+    document.getElementById('sub-assembly').addEventListener('change', e => {
+      const opt = e.target.selectedOptions[0];
+      if (!opt.value) return;
+      add(`a:${opt.value}`, `🧩 <a href="${esc(opt.dataset.url)}" target="_blank">${esc(opt.textContent)}</a> <span class="muted">sub-assembly</span>`);
+      e.target.value = '';
+    });
+    rows.addEventListener('click', e => {
+      if (!e.target.closest('.component-remove')) return;
+      const tr = e.target.closest('tr');
+      const del = tr.querySelector('input[name$="-DELETE"]');
+      if (del) del.checked = true;
+      tr.hidden = true;
+      tr.dataset.ref = '';
+    });
+  })();
+</script>
+{% endblock %}

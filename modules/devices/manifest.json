@@ -1,0 +1,15 @@
+{
+  "label": "devices",
+  "title": "Devices",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Electrical devices, ours and external, with their connectors and pins.",
+  "icon": "🔌",
+  "sequence": 45,
+  "depends": ["users", "inventory", "assemblies"],
+  "menu": [
+    {"label": "Devices", "url": "devices:list"},
+    {"label": "New device", "url": "devices:create"},
+    {"label": "Signals", "url": "devices:signals"}
+  ]
+}

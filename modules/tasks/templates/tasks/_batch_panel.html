@@ -1,0 +1,2 @@
+{% include "tasks/_table.html" %}
+<p class="muted">Created by: {% regroup tasks by batch.name as rules %}{% for r in rules %}{{ r.grouper }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>

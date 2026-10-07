@@ -1,0 +1,16 @@
+{% if assembly %}
+  <p><a href="{{ assembly.get_absolute_url }}"><strong>{{ assembly }}</strong></a> <span class="muted">rev {{ assembly.revision }}</span> {% include "assemblies/_status.html" with a=assembly %}</p>
+  {% if short %}
+    <p class="overdue">Not enough stock for {{ short|length }} part{{ short|length|pluralize }}:</p>
+  {% elif totals %}
+    <p class="muted">All parts are in stock for one build.</p>
+  {% endif %}
+  {% if short %}{% include "assemblies/_totals.html" with totals=short %}{% endif %}
+{% else %}
+  <p class="muted">This task isn't linked to an assembly.</p>
+{% endif %}
+<form method="post" action="{% url 'assemblies:link_task' task.pk %}" class="inline-form">
+  {% csrf_token %}
+  {{ form.assembly }}
+  <button class="btn small">{% if assembly %}Change{% else %}Link{% endif %}</button>
+</form>

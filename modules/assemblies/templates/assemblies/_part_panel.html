@@ -1,0 +1,5 @@
+{% for u in uses %}
+  <p><a href="{{ u.assembly.get_absolute_url }}">{{ u.assembly }}</a> <span class="muted">× {{ u.quantity|floatformat:"-3" }}</span> {% include "assemblies/_status.html" with a=u.assembly %}</p>
+{% empty %}
+  <p class="muted">Not used in any assembly.</p>
+{% endfor %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Modules · Osmia{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ action|capfirst }} {{ entry.title }}{% if action == 'rollback' %} to {{ previous.version }}{% endif %}?</h1>
+  {% if problem %}
+    <div class="flash error">{{ problem }}</div>
+    <div class="actions"><a class="btn" href="{% url 'core:modules' %}">Back to Modules</a></div>
+  {% else %}
+    <form method="post">
+      {% csrf_token %}
+      {% if action == 'disable' %}
+        <p>{{ entry.title }} disappears from Osmia, but its data stays in the database. Enable it again to get it all back.</p>
+      {% elif action == 'enable' %}
+        <p>{{ entry.title }} {{ entry.version }} comes back, with its data as it was.</p>
+      {% elif action == 'uninstall' %}
+        <p>{{ entry.title }} is removed from Osmia.</p>
+        <div class="field"><label><input type="radio" name="delete_data" value="0" checked> Keep its data in the database, in case it's installed again</label></div>
+        <div class="field"><label><input type="radio" name="delete_data" value="1"> Delete its data too</label></div>
+        <p class="muted">The database is backed up first either way.</p>
+      {% elif action == 'rollback' %}
+        <p>{{ entry.title }} goes back from {{ entry.version }} to {{ previous.version }}.</p>
+        {% if previous.backup %}
+          <div class="flash error">The <strong>whole database</strong> goes back to the backup made just before the update
+            ({{ previous.replaced_at|slice:":16"|cut:"T" }}): everything anyone changed in Osmia since then is lost.
+            The current database is backed up first.</div>
+        {% endif %}
+      {% endif %}
+      <p class="muted">Osmia restarts to do this, which takes a moment; people using it see it come back by itself.</p>
+      <div class="actions">
+        <button class="btn {% if action == 'uninstall' or action == 'rollback' %}danger{% else %}primary{% endif %}"{% if not can_change %} disabled{% endif %}>{{ action|capfirst }}</button>
+        <a class="btn" href="{% url 'core:modules' %}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

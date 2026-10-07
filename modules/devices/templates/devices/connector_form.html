@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+      {% for field in form.visible_fields %}{% include "core/_field.html" %}{% endfor %}
+    </div>
+    {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+    <div id="part-details" class="part-details" hidden></div>
+
+    <fieldset>
+      <legend>Pins</legend>
+      <p class="muted">Click a column header to sort the list (again to reverse, a third time for pin order); sorting only changes
+        how the list is shown, saving keeps the pins' order. Blank new rows are ignored. Pins with the same set number are one cable set
+        (e.g. a twisted pair). Signals come from <a href="{% url 'devices:signals' %}" target="_blank">Devices › Signals</a>;
+        tags are this connector's own: each tag column offers the values used here, and "+ Add new…" adds one.</p>
+      {{ formset.management_form }}
+      {{ formset.non_form_errors }}
+      <table class="list compact" id="pin-table">
+        <thead id="pin-sort"><tr>
+          <th><button type="button" class="sort-head" data-col="0">Pin</button></th>
+          {% for n in tag_numbers %}<th class="tag-col-{{ n }}" {% if n > tag_count %}hidden{% endif %}><button type="button" class="sort-head" data-col="{{ n }}">Tag {{ n }}</button></th>{% endfor %}
+          <th><button type="button" class="sort-head" data-col="5">Signal</button></th>
+          <th><button type="button" class="sort-head" data-col="6">Set</button></th>
+          <th><button type="button" class="sort-head" data-col="7">Set type</button></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="pin-rows">
+        {% for f in formset %}
+          <tr class="pin-row">
+            <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.label }}{{ f.label.errors }}</td>
+            <td class="tag-col-1">{{ f.tag1 }}</td>
+            <td class="tag-col-2" {% if 2 > tag_count %}hidden{% endif %}>{{ f.tag2 }}</td>
+            <td class="tag-col-3" {% if 3 > tag_count %}hidden{% endif %}>{{ f.tag3 }}</td>
+            <td class="tag-col-4" {% if 4 > tag_count %}hidden{% endif %}>{{ f.tag4 }}</td>
+            <td>{{ f.signal }}{{ f.signal.errors }}</td>
+            <td>{{ f.set_number }}{{ f.set_number.errors }}</td>
+            <td>{{ f.set_type }}{{ f.set_type.errors }}</td>
+            <td class="pin-remove-cell"><span hidden>{{ f.DELETE }}</span><button type="button" class="btn small pin-remove">✕ Remove</button></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <template id="pin-template">
+        <tr class="pin-row">
+          <td>{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}{{ formset.empty_form.label }}</td>
+          <td class="tag-col-1">{{ formset.empty_form.tag1 }}</td>
+          <td class="tag-col-2">{{ formset.empty_form.tag2 }}</td>
+          <td class="tag-col-3">{{ formset.empty_form.tag3 }}</td>
+          <td class="tag-col-4">{{ formset.empty_form.tag4 }}</td>
+          <td>{{ formset.empty_form.signal }}</td>
+          <td>{{ formset.empty_form.set_number }}</td>
+          <td>{{ formset.empty_form.set_type }}</td>
+          <td class="pin-remove-cell"><span hidden>{{ formset.empty_form.DELETE }}</span><button type="button" class="btn small pin-remove">✕ Remove</button></td>
+        </tr>
+      </template>
+      <button type="button" class="btn small" id="btn-add-pin">+ Add pin</button>
+      <button type="button" class="btn small" id="btn-add-tag-col" title="Show another tag column (up to 4)">+ Tag column</button>
+      <button type="button" class="btn small" id="btn-remove-tag-col" title="Hide the last tag column (only when it's empty)">− Tag column</button>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <button class="btn" name="continue" value="1">Save and keep editing</button>
+      <a class="btn" href="{{ device.get_absolute_url }}{% if connector.pk %}?connector={{ connector.pk }}{% endif %}">Cancel</a>
+    </div>
+  </form>
+  {% if connector.pk %}
+  <form method="post" enctype="multipart/form-data" action="{% url 'devices:connector_import' device.pk connector.pk %}" class="pin-import">
+    {% csrf_token %}
+    <h2>Import a pin table</h2>
+    <p class="muted">A CSV file with a header row and one row per pin. Columns: <code>Pin</code> (required), <code>Tag 1</code>…<code>Tag 4</code>,
+      <code>Signal</code>, <code>Set</code>, <code>Set type</code>, in any order. Unknown signals are added to the signal list.
+      <a href="#" id="csv-example">Download an example</a>.</p>
+    <div class="import-row">
+      <input type="file" name="file" accept=".csv,text/csv,text/plain" required>
+      <label class="check"><input type="radio" name="mode" value="update" checked> Update pins with the same label, add new ones</label>
+      <label class="check"><input type="radio" name="mode" value="replace"> Replace the whole pin table</label>
+      <button class="btn">Import</button>
+    </div>
+    <p class="muted"><strong>Replace</strong> removes pins that aren't in the file and renumbers the rest in the file's order:
+      harness wires to this connector may then point at other pins. Save any changes above first: importing reloads the page.</p>
+  </form>
+  <form method="post" action="{% url 'devices:connector_delete' device.pk connector.pk %}" onsubmit="return confirm('Remove {{ connector.designator }} and its pins?')" style="margin-top: 12px">
+    {% csrf_token %}<button class="btn danger small">Remove connector</button>
+  </form>
+  {% else %}
+  <p class="muted">To import a pin table from a CSV file, save the connector first; the import is then offered here.</p>
+  {% endif %}
+</div>
+{{ part_info|json_script:"part-info" }}
+<script>
+  // The chosen connector part's details, under the form.
+  (function () {
+    const part = document.getElementById('id_part');
+    const box = document.getElementById('part-details');
+    const info = JSON.parse(document.getElementById('part-info').textContent);
+    if (!part || !box) return;
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function show() {
+      const p = info[part.value];
+      box.hidden = !p;
+      if (!p) { box.innerHTML = ''; return; }
+      const rows = [['Description', p.name], ['Category', p.category], ...p.attributes].filter(([, v]) => v);
+      box.innerHTML = `<h3><a href="${esc(p.url)}" target="_blank">${esc(p.part_number)}</a> <span class="muted">connector part</span></h3>` +
+        (rows.length ? `<dl class="props">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`
+                     : '<p class="muted">This part has no details yet.</p>');
+    }
+    part.addEventListener('change', show);
+    show();
+  })();
+
+  // Tag dropdowns: "+ Add new…" asks for the value, adds it to that column's
+  // dropdowns on the page (it joins the column's list when saved) and picks it.
+  (function () {
+    const form = document.querySelector('form.form');
+    let previous = new WeakMap();
+    form.addEventListener('focusin', e => { if (e.target.matches('select.tag-select')) previous.set(e.target, e.target.value); });
+    form.addEventListener('change', e => {
+      const select = e.target;
+      if (!select.matches('select.tag-select') || select.value !== '__new__') return;
+      const name = (window.prompt(`New value for Tag ${select.dataset.column}:`) || '').trim();
+      if (!name) { select.value = previous.get(select) || ''; return; }
+      const column = select.dataset.column;
+      const selects = [...document.querySelectorAll(`select.tag-select[data-column="${column}"]`)];
+      const template = document.getElementById('pin-template');
+      const templateSelect = template && template.content.querySelector(`select.tag-select[data-column="${column}"]`);
+      for (const s of [...selects, templateSelect].filter(Boolean)) {
+        if ([...s.options].some(o => o.value.toLowerCase() === name.toLowerCase())) continue;
+        s.insertBefore(new Option(name, name), s.querySelector('option[value="__new__"]'));
+      }
+      const existing = [...select.options].find(o => o.value.toLowerCase() === name.toLowerCase());
+      select.value = existing ? existing.value : name;
+      previous.set(select, select.value);
+    });
+  })();
+
+  // Tag columns: start with one, "+ Tag column" shows the next (up to 4),
+  // "− Tag column" hides the last one again when no pin uses it.
+  (function () {
+    const table = document.getElementById('pin-table');
+    const count = document.getElementById('id_tag_columns');
+    const add = document.getElementById('btn-add-tag-col');
+    const remove = document.getElementById('btn-remove-tag-col');
+    const current = () => Math.min(4, Math.max(1, parseInt(count.value, 10) || 1));
+    const cells = n => [...table.querySelectorAll(`.tag-col-${n}`)];
+    function show() {
+      const n = current();
+      for (let i = 1; i <= 4; i++) cells(i).forEach(c => { c.hidden = i > n; });
+      add.disabled = n >= 4;
+      remove.disabled = n <= 1;
+    }
+    add.addEventListener('click', () => { count.value = Math.min(4, current() + 1); show(); });
+    remove.addEventListener('click', () => {
+      const n = current();
+      const used = cells(n).some(c => { const s = c.querySelector('select'); return s && s.value && s.value !== '__new__'; });
+      if (used) { window.alert(`Some pins have a Tag ${n}. Clear them first to remove the column.`); return; }
+      count.value = n - 1;
+      show();
+    });
+    // New pin rows follow the columns shown.
+    document.getElementById('btn-add-pin').addEventListener('click', () => setTimeout(show));
+    show();
+  })();
+
+  // "Download an example" for the import.
+  (function () {
+    const link = document.getElementById('csv-example');
+    if (!link) return;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const csv = [
+        'Pin,Tag 1,Signal,Set,Set type',
+        '1,ETH_TX+,TxP,1,twisted',
+        '2,ETH_TX-,TxN,1,twisted',
+        '3,ETH_RX+,RxP,2,twisted',
+        '6,ETH_RX-,RxN,2,twisted',
+        'S,SHIELD,SHIELD,,',
+      ].join('\r\n') + '\r\n';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
+      a.download = 'pin-table-example.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+  })();
+
+  // Sets: pins with the same set number are one cable set, so they share a
+  // type. Changing one pin's type changes the rest of its set; giving a pin
+  // a set number that's already used takes that set's type.
+  (function () {
+    const rows = document.getElementById('pin-rows');
+    const live = () => [...rows.children].filter(tr => !tr.classList.contains('pin-removed'));
+    const numberOf = tr => (tr.querySelector('input[name$="-set_number"]') || {}).value || '';
+    const typeSelect = tr => tr.querySelector('select[name$="-set_type"]');
+    rows.addEventListener('change', e => {
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const number = numberOf(tr).trim();
+      if (!number) return;
+      const others = live().filter(o => o !== tr && numberOf(o).trim() === number);
+      if (e.target.matches('select[name$="-set_type"]')) {
+        others.forEach(o => { typeSelect(o).value = e.target.value; });
+      } else if (e.target.matches('input[name$="-set_number"]')) {
+        const typed = others.map(typeSelect).find(s => s.value);
+        if (typed) typeSelect(tr).value = typed.value;
+      }
+    });
+  })();
+
+  // Sorting the list by a column (view only: saving keeps the pins' order,
+  // which follows each row's form number, not where it's shown).
+  (function () {
+    const rows = document.getElementById('pin-rows');
+    const heads = [...document.querySelectorAll('#pin-sort .sort-head')];
+    let state = { col: null, desc: false };
+    const valueOf = (tr, col) => {
+      const cell = tr.children[col];
+      const field = cell && cell.querySelector('input:not([type=hidden]), select');
+      if (!field) return '';
+      return field.tagName === 'SELECT' ? (field.value && field.value !== '__new__' ? field.selectedOptions[0].textContent.trim() : '') : field.value.trim();
+    };
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    function apply() {
+      const all = [...rows.children];
+      // Rows added since (with "+ Add pin") come after the others in pin order.
+      let next = Math.max(-1, ...all.map(tr => Number(tr.dataset.order ?? -1))) + 1;
+      all.forEach(tr => { if (tr.dataset.order === undefined) tr.dataset.order = next++; });
+      const byOrder = (a, b) => Number(a.dataset.order) - Number(b.dataset.order);
+      let sorted;
+      if (state.col === null) {
+        sorted = all.sort(byOrder);
+      } else {
+        const filled = all.filter(tr => valueOf(tr, state.col) !== '');
+        const empty = all.filter(tr => valueOf(tr, state.col) === '').sort(byOrder);
+        filled.sort((a, b) => collator.compare(valueOf(a, state.col), valueOf(b, state.col)) * (state.desc ? -1 : 1) || byOrder(a, b));
+        sorted = [...filled, ...empty];  // pins without a value last
+      }
+      sorted.forEach(tr => rows.appendChild(tr));
+      heads.forEach(h => {
+        const on = state.col === Number(h.dataset.col);
+        h.classList.toggle('sorted', on);
+        h.classList.toggle('desc', on && state.desc);
+      });
+    }
+    heads.forEach(h => h.addEventListener('click', () => {
+      const col = Number(h.dataset.col);
+      if (state.col !== col) state = { col, desc: false };
+      else if (!state.desc) state.desc = true;
+      else state = { col: null, desc: false };
+      apply();
+    }));
+    [...rows.children].forEach((tr, i) => { tr.dataset.order = i; });  // pin order as loaded
+  })();
+
+  // "+ Add pin": a new blank row from the formset's empty form.
+  (function () {
+    const total = document.getElementById('id_pins-TOTAL_FORMS');
+    const rows = document.getElementById('pin-rows');
+    const template = document.getElementById('pin-template');
+    document.getElementById('btn-add-pin').addEventListener('click', () => {
+      const holder = document.createElement('tbody');
+      holder.appendChild(template.content.cloneNode(true));
+      rows.insertAdjacentHTML('beforeend', holder.innerHTML.replace(/__prefix__/g, total.value));
+      total.value = Number(total.value) + 1;
+      const label = rows.lastElementChild.querySelector('input[name$="-label"]');
+      const numbers = [...rows.querySelectorAll('input[name$="-label"]')].map(i => parseInt(i.value, 10)).filter(n => !isNaN(n));
+      label.value = numbers.length ? Math.max(...numbers) + 1 : 1;
+      label.focus();
+      label.select();
+    });
+
+    // "✕ Remove" ticks the row's hidden Delete box (the pin is removed on Save);
+    // clicking again ("Undo") keeps it.
+    rows.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pin-remove');
+      if (!btn) return;
+      const row = btn.closest('tr');
+      const box = row.querySelector('input[type=checkbox][name$="-DELETE"]');
+      box.checked = !box.checked;
+      row.classList.toggle('pin-removed', box.checked);
+      btn.textContent = box.checked ? 'Undo' : '✕ Remove';
+    });
+    // After a failed save, rows already marked for removal stay marked.
+    rows.querySelectorAll('input[type=checkbox][name$="-DELETE"]:checked').forEach(box => {
+      box.closest('tr').classList.add('pin-removed');
+      box.closest('tr').querySelector('.pin-remove').textContent = 'Undo';
+    });
+  })();
+</script>
+{% endblock %}

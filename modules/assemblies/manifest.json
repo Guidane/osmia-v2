@@ -1,0 +1,14 @@
+{
+  "label": "assemblies",
+  "title": "Assemblies",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Bills of materials built from parts and sub-assemblies.",
+  "icon": "🧩",
+  "sequence": 40,
+  "depends": ["inventory", "stock", "tasks"],
+  "menu": [
+    {"label": "Assemblies", "url": "assemblies:list"},
+    {"label": "New assembly", "url": "assemblies:create"}
+  ]
+}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load osmia_images %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ project.name }} <span class="muted">· images</span></h1>
+  <a class="btn" href="{{ project.get_absolute_url }}">Open in designer</a>
+  <a class="btn" href="{% url 'harness:list' %}">All projects</a>
+</div>
+{% image_gallery project title="Photos of the harnesses" empty="No images yet, e.g. photos of the built harnesses or their labels." %}
+{% endblock %}

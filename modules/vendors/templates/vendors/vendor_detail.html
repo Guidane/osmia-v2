@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+{% with v=vendor %}
+<div class="toolbar">
+  <h1>{{ v.name }}{% if v.code %} <span class="muted">· {{ v.code }}</span>{% endif %}{% if not v.is_active %} <span class="badge off">Inactive</span>{% endif %}</h1>
+  <a class="btn" href="{% url 'vendors:edit' v.pk %}">Edit</a>
+</div>
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Contacts</h2>
+      <table class="list">
+        <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th></tr></thead>
+        <tbody>
+        {% for c in contacts %}
+          <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.role|default:"—" }}</td>
+            <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+            <td>{{ c.phone|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">No contacts yet. Add them on the edit page.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% if orders is not None %}
+    <section class="card panel">
+      <h2>Orders</h2>
+      <table class="list">
+        <thead><tr><th>Order</th><th>Status</th><th class="num">Total</th><th>Created</th></tr></thead>
+        <tbody>
+        {% for o in orders %}
+          <tr>
+            <td><a href="{{ o.get_absolute_url }}">{{ o.number }}</a></td>
+            <td>{% include "orders/_status.html" %}</td>
+            <td class="num">{{ o.total|floatformat:2|intcomma }}</td>
+            <td>{{ o.created_at|date }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">No orders from this vendor yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+    {% if v.notes %}<section class="card panel"><h2>Notes</h2>{{ v.notes|linebreaks }}</section>{% endif %}
+  </div>
+  <div>
+    <section class="card">
+      <dl class="props">
+        <dt>Type</dt><dd>{{ v.get_kind_display }}</dd>
+        <dt>Website</dt><dd>{% if v.website %}<a href="{{ v.website }}" target="_blank" rel="noopener">{{ v.website }}</a>{% else %}—{% endif %}</dd>
+        <dt>Email</dt><dd>{% if v.email %}<a href="mailto:{{ v.email }}">{{ v.email }}</a>{% else %}—{% endif %}</dd>
+        <dt>Phone</dt><dd>{{ v.phone|default:"—" }}</dd>
+        <dt>Address</dt><dd>{% for line in v.address_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</dd>
+        <dt>Account no.</dt><dd>{{ v.account_number|default:"—" }}</dd>
+        <dt>VAT / tax ID</dt><dd>{{ v.tax_id|default:"—" }}</dd>
+        <dt>Payment terms</dt><dd>{{ v.payment_terms|default:"—" }}</dd>
+        <dt>Currency</dt><dd>{{ v.currency|default:"—" }}</dd>
+        <dt>Lead time</dt><dd>{% if v.lead_time_days is not None %}{{ v.lead_time_days }} day{{ v.lead_time_days|pluralize }}{% else %}—{% endif %}</dd>
+      </dl>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

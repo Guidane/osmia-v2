@@ -1,0 +1,13 @@
+{% comment %}"Move the selected stock to <location>". Rows join in with <input class="row-select" name="items" form="transfer-form">.{% endcomment %}
+<form method="post" action="{% url 'stock:transfer' %}" id="transfer-form" class="move-bar" data-select-bar data-noun="row">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <span class="move-count muted" data-select-count>Select rows to move them</span>
+  <label>to <select name="location" required>
+    <option value="">Pick a location…</option>
+    {% for loc in move_locations %}<option value="{{ loc.pk }}">{% if loc.code %}{{ loc.code }} · {% endif %}{{ loc.full_path }}</option>{% endfor %}
+  </select></label>
+  <input type="text" name="note" maxlength="255" placeholder="Note (optional)">
+  <button class="btn primary" data-select-submit disabled>Move</button>
+  <button type="button" class="btn small" data-select-clear hidden>Clear</button>
+</form>

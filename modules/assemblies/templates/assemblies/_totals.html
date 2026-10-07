@@ -1,0 +1,15 @@
+<table class="list">
+  <thead><tr><th>Part</th><th class="num">Needed</th><th class="num">On hand</th><th class="num">Short</th></tr></thead>
+  <tbody>
+  {% for r in totals %}
+    <tr class="{% if r.short %}warn{% endif %}">
+      <td><a href="{{ r.part.get_absolute_url }}">{{ r.part }}</a></td>
+      <td class="num">{{ r.needed|floatformat:"-3" }} {{ r.part.unit }}</td>
+      <td class="num">{{ r.on_hand|floatformat:"-2" }}</td>
+      <td class="num">{% if r.short %}<strong>{{ r.short|floatformat:"-3" }}</strong>{% else %}—{% endif %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4" class="muted">No parts.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar"><h1>Settings</h1></div>
+<section class="card panel">
+  <h2>History in modules</h2>
+  <p class="muted">A module that shows its history has a History panel on its records and a Log link in its menu.
+    Hiding it only changes those pages: every change is still logged and shown here in Audit.</p>
+  <form method="post">{% csrf_token %}
+    <table class="list">
+      <thead><tr><th>Module</th><th>Show history</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><label for="shown-{{ r.module.label }}">{{ r.module.manifest.icon }} {{ r.module.manifest.title }}</label></td>
+          <td><input type="checkbox" id="shown-{{ r.module.label }}" name="shown" value="{{ r.module.label }}"
+                     {% if r.shown %}checked{% endif %}{% if not can_change %} disabled{% endif %}></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if can_change %}<p><button class="btn primary">Save</button></p>
+    {% else %}<p class="muted">Only an administrator can change this.</p>{% endif %}
+  </form>
+</section>
+{% endblock %}

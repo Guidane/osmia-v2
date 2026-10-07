@@ -1,0 +1,14 @@
+{
+  "label": "vendors",
+  "title": "Vendors",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "The companies we buy from: contact details, address, account and payment terms.",
+  "icon": "🏢",
+  "sequence": 29,
+  "depends": ["users"],
+  "menu": [
+    {"label": "Vendors", "url": "vendors:list"},
+    {"label": "New vendor", "url": "vendors:create"}
+  ]
+}

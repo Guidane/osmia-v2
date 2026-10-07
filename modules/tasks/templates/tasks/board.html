@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Task board</h1>
+  {% include "tasks/_filters.html" %}
+  <a class="btn primary" href="{% url 'tasks:create' %}">New task</a>
+</div>
+
+<div class="kanban">
+  {% for col in columns %}
+  <section class="kanban-col">
+    <h2><span>{{ col.label }}</span> <span class="muted">{{ col.tasks|length }}</span></h2>
+    {% for task in col.tasks %}
+      <article class="kanban-card">
+        <a href="{{ task.get_absolute_url }}"><strong>{{ task.title }}</strong></a>
+        <div class="meta">
+          {% if task.priority_css %}<span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span>{% endif %}
+          <span>{{ task.assignee|default:"Unassigned" }}</span>
+          {% if task.due_date %}<span class="{% if task.is_overdue %}overdue{% endif %}">· {{ task.due_date|date:"M j" }}</span>{% endif %}
+        </div>
+        <div class="meta">
+          {% for value, label in statuses %}{% if value != task.status %}
+            <form method="post" action="{% url 'tasks:set_status' task.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="{{ value }}">
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn small">→ {{ label }}</button>
+            </form>
+          {% endif %}{% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+    <a class="muted" href="{% url 'tasks:create' %}?status={{ col.status }}">+ Add task</a>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
