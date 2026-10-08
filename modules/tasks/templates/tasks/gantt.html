@@ -51,7 +51,7 @@
            class="gantt-bar {{ r.task.status }}{% if r.task.is_overdue %} overdue-bar{% endif %}{% if r.clipped_start %} clip-start{% endif %}{% if r.clipped_end %} clip-end{% endif %}{% if r.estimated_start %} estimated{% endif %}"
            style="left: {{ r.left }}%; width: {{ r.width }}%"
            title="{{ r.task.title }} · {{ r.start|date:'M j' }} → {{ r.end|date:'M j' }}{% if r.estimated_start %} (no start date; starts when created){% endif %} · {{ r.task.get_status_display }}">
-          {{ r.task.assignee.first_name|default:r.task.assignee.username|default:"" }}
+          {% if r.task.assignee %}{{ r.task.assignee.first_name|default:r.task.assignee.username }}{% endif %}
         </a>
       </div>
     </div>

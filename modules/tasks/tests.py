@@ -101,6 +101,13 @@ class TaskGroupTests(TestCase):
         form = self.client.get(reverse('tasks:create') + f'?parent={self.count.pk}').context['form']
         self.assertEqual(form.initial['group'], self.inventory.pk)
 
+    def test_gantt_with_an_unassigned_task(self):
+        from django.utils import timezone
+        Task.objects.create(title='Nobody yet', due_date=timezone.localdate())  # e.g. after demo users are removed
+        page = self.client.get(reverse('tasks:gantt'))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'Nobody yet')
+
     def test_list_filter_gantt_and_group_pages(self):
         listed = self.client.get(reverse('tasks:list') + f'?group={self.inventory.pk}&status=all').context['rows']
         self.assertTrue(listed and all(t.group == self.inventory for t in listed))
