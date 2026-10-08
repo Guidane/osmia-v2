@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ object.name }}{% if object.description %} <span class="muted">· {{ object.description }}</span>{% endif %}</h1>
+  <a class="btn" href="{% url 'inventory:family_edit' object.pk %}">Edit</a>
+  <a class="btn" href="{% url 'inventory:family_delete' object.pk %}">Delete</a>
+</div>
+<p class="muted">Every part on the pin side mates with every part on the socket side. Set a part's family and side on its Edit page.</p>
+<div class="grid-2">
+  <section class="card panel">
+    <h2>Pin</h2>
+    {% include "inventory/_family_parts.html" with parts=pins %}
+  </section>
+  <section class="card panel">
+    <h2>Socket</h2>
+    {% include "inventory/_family_parts.html" with parts=sockets %}
+  </section>
+</div>
+{% if unset %}
+<section class="card panel">
+  <h2>Side not set</h2>
+  <p class="muted">These mate with every other part of the family until they're set to pin or socket.</p>
+  {% include "inventory/_family_parts.html" with parts=unset %}
+</section>
+{% endif %}
+{% endblock %}

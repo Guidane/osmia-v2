@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from . import lookup
-from .models import Attribute, Category, Part
+from .models import Attribute, Category, MatingFamily, Part
 
 # A trimmed Mouser "search/partnumber" response in the documented format.
 MOUSER_RESPONSE = {
@@ -151,8 +151,8 @@ class PartLinkTests(TestCase):
         from tools.models import Tool
         plug, socket = Part.objects.get(part_number='DB25-M'), Part.objects.get(part_number='DB25-F')
         contact = Part.objects.get(part_number='DS-PIN-C')
-        self.assertIn(socket, plug.mates_with.all())
-        self.assertIn(plug, socket.mates_with.all())       # both ways
+        self.assertEqual(list(plug.mates_with), [socket])  # the other side of the family
+        self.assertEqual(list(socket.mates_with), [plug])  # both ways
         self.assertIn(contact, plug.fits.all())
         self.assertIn(plug, contact.fits_into.all())       # the other way round reads "fits into"
         page = self.client.get(contact.get_absolute_url())
@@ -168,12 +168,14 @@ class PartLinkTests(TestCase):
         self.assertContains(edit, f'data-exclude="{strap.pk}"')
         self.client.post(reverse('inventory:part_edit', args=[strap.pk]), {
             'part_number': strap.part_number, 'name': strap.name, 'category': strap.category_id, 'unit': 'pair',
-            'is_active': 'on', 'mates_with': [plug.pk], 'fits': [contact.pk], 'tools': [crimp.pk],
+            'is_active': 'on', 'mating_family': plug.mating_family_id, 'mating_side': 'socket',
+            'fits': [contact.pk], 'tools': [crimp.pk],
         })
-        self.assertEqual(list(strap.mates_with.all()), [plug])
+        strap.refresh_from_db()
+        self.assertEqual(list(strap.mates_with), [plug])
         self.assertEqual(list(strap.fits.all()), [contact])
         self.assertEqual(list(strap.tools.all()), [crimp])
-        self.assertContains(self.client.get(reverse('inventory:part_list')), 'mates with')
+        self.assertContains(self.client.get(reverse('inventory:part_list')), 'D-sub DB25 socket')
 
     def test_part_search_and_quick_create(self):
         found = self.client.get(reverse('inventory:part_search') + '?q=Arcol').json()['parts']
@@ -183,3 +185,45 @@ class PartLinkTests(TestCase):
         self.assertEqual(resp.json()['part']['part_number'], 'QX-1')
         self.assertEqual(self.client.post(reverse('inventory:part_quick_create'), {}, content_type='application/json').status_code, 400)
         self.assertNotContains(self.client.get(reverse('inventory:part_create')), 'reorder')
+
+
+class MatingFamilyTests(TestCase):
+    def setUp(self):
+        from users.models import User
+        User.objects.create_superuser('admin', password='admin')
+        self.client.login(username='admin', password='admin')
+        self.dsub = MatingFamily.objects.create(name='D-sub DB9')
+        self.pin = Part.objects.create(part_number='DB9-P', mating_family=self.dsub, mating_side='pin')
+        self.pin2 = Part.objects.create(part_number='DB9-P2', mating_family=self.dsub, mating_side='pin')
+        self.socket = Part.objects.create(part_number='DB9-S', mating_family=self.dsub, mating_side='socket')
+        self.other = Part.objects.create(part_number='M12-S', mating_family=MatingFamily.objects.create(name='M12'),
+                                         mating_side='socket')
+
+    def test_a_part_mates_with_the_other_side_of_its_family(self):
+        self.assertEqual(set(self.socket.mates_with), {self.pin, self.pin2})
+        self.assertEqual(list(self.pin.mates_with), [self.socket])  # not the other pin, not M12
+        self.assertEqual(list(Part.objects.create(part_number='LOOSE').mates_with), [])
+        unset = Part.objects.create(part_number='DB9-?', mating_family=self.dsub)
+        self.assertEqual(set(unset.mates_with), {self.pin, self.pin2, self.socket})  # until its side is set
+
+    def test_the_form_needs_a_side_with_a_family(self):
+        url = reverse('inventory:part_create')
+        data = {'part_number': 'DB9-X', 'unit': 'pcs', 'is_active': 'on', 'mating_family': self.dsub.pk}
+        self.assertContains(self.client.post(url, data), 'Pick pin or socket')
+        self.client.post(url, {**data, 'mating_side': 'pin'})
+        self.assertEqual(Part.objects.get(part_number='DB9-X').mates_with.get(), self.socket)
+        # Without a family the side is dropped.
+        self.client.post(url, {'part_number': 'DB9-Y', 'unit': 'pcs', 'mating_side': 'pin'})
+        self.assertEqual(Part.objects.get(part_number='DB9-Y').mating_side, '')
+
+    def test_family_pages(self):
+        page = self.client.get(self.dsub.get_absolute_url())
+        self.assertContains(page, 'DB9-P2')
+        self.assertContains(page, 'DB9-S')
+        self.assertContains(self.client.get(reverse('inventory:family_list')), 'D-sub DB9')
+        self.assertContains(self.client.get(self.pin.get_absolute_url()), 'DB9-S')
+        self.client.post(reverse('inventory:family_create'), {'name': 'Molex Micro-Fit'})
+        self.assertTrue(MatingFamily.objects.filter(name='Molex Micro-Fit').exists())
+        self.client.post(reverse('inventory:family_delete', args=[self.dsub.pk]))
+        self.pin.refresh_from_db()
+        self.assertIsNone(self.pin.mating_family)  # the part stays

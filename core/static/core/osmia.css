@@ -149,6 +149,13 @@ input, select, textarea { font: inherit; padding: 6px 8px; border: 1px solid var
 .gantt-bar.estimated, .gantt-swatch.estimated { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.25) 0 6px, transparent 6px 12px); }
 .gantt-bar.clip-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .gantt-bar.clip-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.gantt-group .gantt-label { border-left: 4px solid var(--group); background: color-mix(in srgb, var(--group) 8%, transparent); font-weight: 600; }
+.gantt-group .gantt-track { min-height: 34px; }
+.gantt-group-bar { position: absolute; top: 13px; height: 8px; border-radius: 4px; background: var(--group); opacity: .85; }
+.gantt-in-group .gantt-label { border-left: 4px solid color-mix(in srgb, var(--group) 35%, transparent); padding-left: 20px; }
+.group-tag { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 12px; line-height: 18px; white-space: nowrap;
+  color: var(--group); background: color-mix(in srgb, var(--group) 12%, transparent); border: 1px solid color-mix(in srgb, var(--group) 35%, transparent); }
+.group-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--group); vertical-align: -1px; }
 .gantt-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .gantt-swatch { display: inline-block; width: 14px; height: 10px; border-radius: 2px; background: #94a3b8; margin-left: 8px; }
 .gantt-swatch.estimated { background-color: #94a3b8; }
@@ -350,6 +357,8 @@ button.sort-head.sorted.desc::after { content: " ▼"; }
 .picker-results { max-height: 320px; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
 .part-links-editor .link-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .part-links-editor h3 { margin: 4px 0; font-size: 14px; }
+.mating-fields { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.mating-fields label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 ul.chips { list-style: none; padding: 0; margin: 0 0 4px; display: flex; flex-direction: column; gap: 3px; min-height: 1.5em; }
 ul.chips li { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 6px; display: flex; gap: 6px; align-items: center; }
 ul.chips li .chip-remove { margin-left: auto; border: 0; background: none; color: var(--danger); cursor: pointer; }

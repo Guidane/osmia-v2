@@ -28,8 +28,19 @@
       </div>
     </div>
 
-    {% for r in rows %}
-    <div class="gantt-row">
+    {% for s in sections %}
+    <div class="gantt-row gantt-group" style="--group: {{ s.group.color|default:'#94a3b8' }}">
+      <div class="gantt-label">
+        {% if s.group %}<a href="{{ s.group.get_absolute_url }}">{{ s.group.name }}</a>{% else %}<span>No group</span>{% endif %}
+        <small class="muted">{{ s.rows|length }} task{{ s.rows|length|pluralize }} · {{ s.done }} done</small>
+      </div>
+      <div class="gantt-track">
+        {% if today_left %}<span class="gantt-today" style="left: {{ today_left }}%"></span>{% endif %}
+        <span class="gantt-group-bar" style="left: {{ s.left }}%; width: {{ s.width }}%" title="{% if s.group %}{{ s.group.name }}{% else %}No group{% endif %} · {{ s.start|date:'M j' }} → {{ s.end|date:'M j' }}"></span>
+      </div>
+    </div>
+    {% for r in s.rows %}
+    <div class="gantt-row gantt-in-group" style="--group: {{ s.group.color|default:'#94a3b8' }}">
       <div class="gantt-label">
         <a href="{{ r.task.get_absolute_url }}">{{ r.task.title }}</a>
         <small class="muted">{{ r.task.assignee|default:"Unassigned" }}</small>
@@ -44,6 +55,7 @@
         </a>
       </div>
     </div>
+    {% endfor %}
     {% empty %}
     <div class="gantt-row"><div class="gantt-label muted">No scheduled tasks in this period.</div><div class="gantt-track"></div></div>
     {% endfor %}

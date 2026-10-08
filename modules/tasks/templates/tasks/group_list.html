@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Task groups</h1>
+  <a class="btn primary" href="{% url 'tasks:group_create' %}">New group</a>
+</div>
+<p class="muted">Related tasks, e.g. everything to do with inventory. Each group is a section in the Gantt chart.
+  Move tasks into a group on the <a href="{% url 'tasks:list' %}">List</a> (tick them, then "Move to group") or on a task's Edit page;
+  their subtasks move with them.</p>
+<table class="list">
+  <thead><tr><th>Group</th><th>Description</th><th class="num">Open</th><th class="num">All</th><th></th></tr></thead>
+  <tbody>
+  {% for g in object_list %}
+    <tr>
+      <td><span class="group-swatch" style="--group: {{ g.color }}"></span> <a href="{{ g.get_absolute_url }}">{{ g.name }}</a></td>
+      <td>{{ g.description }}</td>
+      <td class="num">{{ g.open_count }}</td><td class="num">{{ g.task_count }}</td>
+      <td class="actions-cell">
+        <a class="btn small" href="{% url 'tasks:gantt' %}?group={{ g.pk }}">Gantt</a>
+        <a class="btn small" href="{% url 'tasks:create' %}?group={{ g.pk }}">+ Task</a>
+        <a class="btn small" href="{% url 'tasks:group_edit' g.pk %}">Edit</a>
+        <a class="btn small" href="{% url 'tasks:group_delete' g.pk %}">Delete</a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No groups yet.</td></tr>
+  {% endfor %}
+  {% if ungrouped %}<tr><td colspan="5" class="muted"><a href="{% url 'tasks:list' %}?group=none&amp;status=all">{{ ungrouped }} task{{ ungrouped|pluralize }} without a group</a></td></tr>{% endif %}
+  </tbody>
+</table>
+{% endblock %}

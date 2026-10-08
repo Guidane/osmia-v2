@@ -10,6 +10,13 @@
     {% endfor %}
   </select>
   {% endif %}
+  <select name="group" onchange="this.form.submit()">
+    <option value="">All groups</option>
+    <option value="none" {% if selected_group == 'none' %}selected{% endif %}>No group</option>
+    {% for g in groups %}
+      <option value="{{ g.pk }}" {% if selected_group == g.pk|stringformat:'s' %}selected{% endif %}>{{ g.name }}</option>
+    {% endfor %}
+  </select>
   {% if selected_status %}
   <select name="status" onchange="this.form.submit()">
     <option value="open" {% if selected_status == 'open' %}selected{% endif %}>Open</option>

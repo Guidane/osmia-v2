@@ -1,0 +1,13 @@
+{
+  "label": "demo_data",
+  "title": "Demo data",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Turn the example data (people, parts, tasks, ...) on and off.",
+  "icon": "🧪",
+  "sequence": 99,
+  "depends": ["users"],
+  "menu": [
+    {"label": "Demo data", "url": "demo_data:index"}
+  ]
+}

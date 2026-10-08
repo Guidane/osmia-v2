@@ -13,6 +13,7 @@
     {% for task in col.tasks %}
       <article class="kanban-card">
         <a href="{{ task.get_absolute_url }}"><strong>{{ task.title }}</strong></a>
+        {% if task.group %}<div>{% include "tasks/_group.html" with group=task.group %}</div>{% endif %}
         <div class="meta">
           {% if task.priority_css %}<span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span>{% endif %}
           <span>{{ task.assignee|default:"Unassigned" }}</span>

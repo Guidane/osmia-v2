@@ -1,6 +1,6 @@
 from core.trees import get_or_create_path
 
-from .models import Attribute, Category, Part, PartAttributeValue
+from .models import Attribute, Category, MatingFamily, Part, PartAttributeValue
 
 CATEGORY_ATTRIBUTES = {
     'Hardware > Fasteners': [('material', 'stainless steel'), ('thread', 'M3'), ('manufacturer', 'Würth')],
@@ -59,11 +59,16 @@ def load():
                 part=part, attribute=category.attributes.get(name=attr_name), defaults={'value': value},
             )
 
-    # How they go together: the plug mates with the socket; each housing takes its crimp contacts,
+    # How they go together: pin mates with socket in each family; each housing takes its crimp contacts,
     # which are crimped with the D-sub crimp tool.
     parts = {p.part_number: p for p in Part.objects.filter(part_number__in=[row[0] for row in PARTS])}
-    if 'DB25-M' in parts and 'DB25-F' in parts:
-        parts['DB25-M'].mates_with.add(parts['DB25-F'])
+    families = (('D-sub DB25', '25-way D-sub shells', 'DB25-M', 'DB25-F'),
+                ('D-sub crimp contacts', 'Size 20 machined contacts', 'DS-PIN-C', 'DS-SKT-C'))
+    for name, description, pin, socket in families:
+        family, _ = MatingFamily.objects.get_or_create(name=name, defaults={'description': description})
+        for number, side in ((pin, Part.Side.PIN), (socket, Part.Side.SOCKET)):
+            if number in parts and not parts[number].mating_family_id:
+                Part.objects.filter(pk=parts[number].pk).update(mating_family=family, mating_side=side)
     for housing, contact in (('DB25-M', 'DS-PIN-C'), ('DB25-F', 'DS-SKT-C')):
         if housing in parts and contact in parts:
             parts[housing].fits.add(parts[contact])

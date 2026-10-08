@@ -2,7 +2,7 @@ from django import forms
 
 from core.trees import TreeNodeForm
 
-from .models import Attribute, Category, Part, PartAttributeValue
+from .models import Attribute, Category, MatingFamily, Part, PartAttributeValue
 
 
 class CategoryForm(TreeNodeForm):
@@ -15,6 +15,12 @@ AttributeFormSet = forms.inlineformset_factory(
 )
 
 
+class MatingFamilyForm(forms.ModelForm):
+    class Meta:
+        model = MatingFamily
+        fields = ['name', 'description']
+
+
 class PartForm(forms.ModelForm):
     """Part fields plus one ``attr_<id>`` field per category attribute.
 
@@ -23,20 +29,20 @@ class PartForm(forms.ModelForm):
     """
 
     BASE_FIELDS = ['part_number', 'name', 'category', 'unit', 'is_active']
-    LINK_FIELDS = ['mates_with', 'fits', 'tools']
+    LINK_FIELDS = ['mating_family', 'mating_side', 'fits', 'tools']
 
     class Meta:
         model = Part
-        fields = ['part_number', 'name', 'category', 'unit', 'is_active', 'mates_with', 'fits', 'tools']
+        fields = ['part_number', 'name', 'category', 'unit', 'is_active', 'mating_family', 'mating_side', 'fits', 'tools']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['category'].queryset = Category.objects.select_related('parent')
         others = Part.objects.exclude(pk=self.instance.pk) if self.instance.pk else Part.objects.all()
-        for name in ('mates_with', 'fits'):
-            # Picked with the part picker on the page; the select holds the choice.
-            self.fields[name].queryset = others
-            self.fields[name].widget.attrs.update({'hidden': True, 'class': 'part-links'})
+        # Picked with the part picker on the page; the select holds the choice.
+        self.fields['fits'].queryset = others
+        self.fields['fits'].widget.attrs.update({'hidden': True, 'class': 'part-links'})
+        self.fields['mating_family'].empty_label = 'Not a connector'
         # Active tools, plus retired ones the part already uses.
         from tools.models import Tool
         tools = Tool.objects.filter(is_active=True)
@@ -68,14 +74,19 @@ class PartForm(forms.ModelForm):
             for g in self.attribute_groups
         ]
 
+    def clean(self):
+        data = super().clean()
+        if data.get('mating_family') and not data.get('mating_side'):
+            self.add_error('mating_side', 'Pick pin or socket: it mates with the other side of the family.')
+        if not data.get('mating_family'):
+            data['mating_side'] = ''
+        return data
+
     def save(self, commit=True):
         part = super().save(commit=commit)
         if commit:
             self.save_attribute_values(part)
         return part
-
-    def mates_with_linked(self):
-        return self.linked('mates_with')
 
     def fits_linked(self):
         return self.linked('fits')

@@ -37,6 +37,34 @@ class TaskBatch(models.Model):
         return not self.tasks.exclude(status=Task.Status.DONE).exists()
 
 
+class TaskGroup(models.Model):
+    """A set of related tasks, e.g. everything to do with inventory. Shown as
+    a section in the Gantt chart; tasks are moved between groups on the list."""
+
+    class Color(models.TextChoices):
+        BLUE = '#3b82f6', 'Blue'
+        GREEN = '#16a34a', 'Green'
+        ORANGE = '#ea580c', 'Orange'
+        PURPLE = '#7c3aed', 'Purple'
+        TEAL = '#0d9488', 'Teal'
+        PINK = '#db2777', 'Pink'
+        AMBER = '#ca8a04', 'Amber'
+        SLATE = '#475569', 'Slate'
+
+    name = models.CharField(max_length=100, unique=True)
+    color = models.CharField(max_length=7, choices=Color, default=Color.BLUE)
+    description = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('tasks:list') + f'?group={self.pk}&status=all'
+
+
 class Task(models.Model):
     class Status(models.TextChoices):
         TODO = 'todo', 'To do'
@@ -49,6 +77,14 @@ class Task(models.Model):
         HIGH = 2, 'High'
 
     title = models.CharField(max_length=200)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subtasks', verbose_name='parent task',
+        help_text='Makes this a subtask of another task. Deleting the parent keeps its subtasks.',
+    )
+    group = models.ForeignKey(
+        TaskGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks',
+        help_text='Related tasks, e.g. Inventory. Changing it moves the subtasks too.',
+    )
     images = GenericRelation('core.Image')  # pictures, shown with {% image_gallery %}
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status, default=Status.TODO)
@@ -77,6 +113,31 @@ class Task(models.Model):
 
     def get_absolute_url(self):
         return reverse('tasks:detail', args=[self.pk])
+
+    def ancestors(self):
+        """The tasks above this one, top first."""
+        chain, seen, node = [], {self.pk}, self.parent
+        while node is not None and node.pk not in seen:
+            seen.add(node.pk)
+            chain.append(node)
+            node = node.parent
+        return list(reversed(chain))
+
+    def descendant_ids(self):
+        ids, frontier = set(), [self.pk]
+        while frontier:
+            children = Task.objects.filter(parent_id__in=frontier).values_list('pk', flat=True)
+            frontier = [pk for pk in children if pk not in ids]
+            ids.update(frontier)
+        return ids
+
+    def move_to_group(self, group):
+        """Put this task and everything below it in ``group`` (None: no group)."""
+        ids = {self.pk, *self.descendant_ids()}
+        for task in Task.objects.filter(pk__in=ids).exclude(group=group):
+            task.group = group
+            task.save(update_fields=['group', 'updated_at'])  # save() so the change is logged
+        self.group = group
 
     @property
     def automation_source(self):

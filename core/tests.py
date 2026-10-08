@@ -244,7 +244,8 @@ class ImageTests(TestCase):
         first.refresh_from_db()
         self.assertEqual(first.caption, 'Side view')
         path = first.file.path
-        update(first, action='delete')
+        with self.captureOnCommitCallbacks(execute=True):  # files go once the delete is committed
+            update(first, action='delete')
         self.assertFalse(Image.objects.filter(pk=first.pk).exists())
         self.assertFalse(Path(path).exists())
 
@@ -252,7 +253,8 @@ class ImageTests(TestCase):
         task = Task.objects.create(title='Photo task')
         self.upload(task, picture())
         path = task.images.get().file.path
-        task.delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            task.delete()
         self.assertFalse(Image.objects.exists())
         self.assertFalse(Path(path).exists())
 

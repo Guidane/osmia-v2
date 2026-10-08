@@ -1,7 +1,7 @@
 {
   "label": "inventory",
   "title": "Parts",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "osmia": ">=2.0",
   "description": "The parts catalogue: descriptions, categories and attributes, and which parts and tools go together.",
   "icon": "📦",
@@ -10,6 +10,7 @@
   "menu": [
     {"label": "Parts", "url": "inventory:part_list"},
     {"label": "Categories", "url": "inventory:category_list"},
+    {"label": "Mating families", "url": "inventory:family_list"},
     {"label": "New part", "url": "inventory:part_create"}
   ]
 }

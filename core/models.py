@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.urls import reverse
@@ -47,6 +47,6 @@ class Image(models.Model):
 
 @receiver(post_delete, sender=Image, dispatch_uid='core-image-delete-files')
 def delete_image_files(sender, instance, **kwargs):
-    for f in (instance.file, instance.thumb):
-        if f:
-            f.delete(save=False)
+    # Only once the delete is committed: a rolled-back delete keeps its files.
+    files = [f for f in (instance.file, instance.thumb) if f]
+    transaction.on_commit(lambda: [f.delete(save=False) for f in files])

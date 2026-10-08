@@ -1,7 +1,7 @@
 {
   "label": "tasks",
   "title": "Tasks",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "osmia": ">=2.0",
   "description": "Plan and track work across the team.",
   "icon": "✅",
@@ -12,6 +12,7 @@
     {"label": "List", "url": "tasks:list"},
     {"label": "Gantt", "url": "tasks:gantt"},
     {"label": "My tasks", "url": "tasks:mine"},
+    {"label": "Groups", "url": "tasks:groups"},
     {"label": "New task", "url": "tasks:create"}
   ]
 }

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load osmia_images %}
+{% load osmia_images osmia_static %}
 {% block content %}
 <div class="toolbar">
   <h1>{{ task.title }}</h1>
@@ -18,12 +18,19 @@
     <section class="card">
       {% if task.description %}{{ task.description|linebreaks }}{% else %}<p class="muted">No description.</p>{% endif %}
     </section>
+    <section class="card panel">
+      <h2>Subtasks</h2>
+      {% if subtasks %}{% include "tasks/_table.html" with tasks=subtasks tree="task-subtasks" %}{% endif %}
+      <p><a href="{% url 'tasks:create' %}?parent={{ task.pk }}">+ Add a subtask</a></p>
+    </section>
     {% image_gallery task empty="No images yet, e.g. photos of the work or the problem." %}
     {# Panels contributed by other modules, e.g. inventory materials #}
     {% include "core/panels.html" %}
   </div>
   <section class="card">
     <dl class="props">
+      {% if task.parent %}<dt>Part of</dt><dd>{% for a in task.ancestors %}<a href="{{ a.get_absolute_url }}">{{ a.title }}</a>{% if not forloop.last %} › {% endif %}{% endfor %}</dd>{% endif %}
+      <dt>Group</dt><dd>{% include "tasks/_group.html" with group=task.group %}</dd>
       <dt>Status</dt><dd><span class="badge {{ task.status }}">{{ task.get_status_display }}</span></dd>
       <dt>Priority</dt><dd><span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span></dd>
       <dt>Assignee</dt><dd>{% if task.assignee %}<a href="{{ task.assignee.get_absolute_url }}">{{ task.assignee }}</a>{% else %}—{% endif %}</dd>
@@ -36,4 +43,5 @@
     </dl>
   </section>
 </div>
+{% if subtasks %}<script src="{% versioned_static 'core/tree_table.js' %}"></script>{% endif %}
 {% endblock %}

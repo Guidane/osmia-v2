@@ -7,16 +7,16 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
-from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from core import hooks
 from core.trees import sorted_by_path
 
 from . import lookup
-from .forms import AttributeFormSet, CategoryForm, PartForm, QuickPartForm
-from .models import Attribute, Category, Part
+from .forms import AttributeFormSet, CategoryForm, MatingFamilyForm, PartForm, QuickPartForm
+from .models import Attribute, Category, MatingFamily, Part
 
 
 class PartListView(LoginRequiredMixin, ListView):
@@ -24,7 +24,7 @@ class PartListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        return search_parts(self.request.GET).select_related('category__parent').prefetch_related('images', 'mates_with', 'fits')
+        return search_parts(self.request.GET).select_related('category__parent', 'mating_family').prefetch_related('images', 'fits')
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(**kwargs, categories=Category.objects.select_related('parent'))
@@ -83,7 +83,7 @@ class PartDetailView(LoginRequiredMixin, DetailView):
         return super().get_context_data(
             **kwargs,
             attribute_values=p.attribute_values.select_related('attribute'),
-            mates_with=p.mates_with.all(), fits=p.fits.all(), fits_into=p.fits_into.all(),
+            mates_with=p.mates_with, fits=p.fits.all(), fits_into=p.fits_into.all(),
             tools=p.tools.all(),
             panels=hooks.collect('part_detail_panels', self.request, p),
         )
@@ -184,3 +184,57 @@ def category_form(request, pk=None):
         'form': form, 'formset': formset, 'category': category,
         'heading': f'Edit {category}' if pk else 'New category',
     })
+
+
+# -- Mating families (which connectors mate with which) ------------------------
+
+class FamilyListView(LoginRequiredMixin, ListView):
+    model = MatingFamily
+    template_name = 'inventory/family_list.html'
+
+    def get_queryset(self):
+        return MatingFamily.objects.annotate(
+            pin_count=Count('parts', filter=Q(parts__mating_side=Part.Side.PIN)),
+            socket_count=Count('parts', filter=Q(parts__mating_side=Part.Side.SOCKET)),
+            unset_count=Count('parts', filter=Q(parts__mating_side='')),
+        )
+
+
+class FamilyDetailView(LoginRequiredMixin, DetailView):
+    model = MatingFamily
+    template_name = 'inventory/family_detail.html'
+
+    def get_context_data(self, **kwargs):
+        parts = list(self.object.parts.select_related('category__parent'))
+        return super().get_context_data(
+            **kwargs,
+            pins=[p for p in parts if p.mating_side == Part.Side.PIN],
+            sockets=[p for p in parts if p.mating_side == Part.Side.SOCKET],
+            unset=[p for p in parts if not p.mating_side],
+        )
+
+
+class FamilyFormMixin(LoginRequiredMixin):
+    model = MatingFamily
+    form_class = MatingFamilyForm
+    template_name = 'core/form.html'
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Family saved.')
+        return super().form_valid(form)
+
+
+class FamilyCreateView(FamilyFormMixin, CreateView):
+    extra_context = {'heading': 'New mating family'}
+
+
+class FamilyUpdateView(FamilyFormMixin, UpdateView):
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(**kwargs, heading=f'Edit {self.object}', cancel_url=self.object.get_absolute_url())
+
+
+class FamilyDeleteView(LoginRequiredMixin, DeleteView):
+    """Deleting a family keeps its parts; they just no longer mate with anything."""
+    model = MatingFamily
+    template_name = 'core/confirm_delete.html'
+    success_url = reverse_lazy('inventory:family_list')

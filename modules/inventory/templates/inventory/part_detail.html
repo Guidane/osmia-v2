@@ -37,7 +37,9 @@
     <section class="card panel">
       <h2>Goes with</h2>
       <dl class="props part-links">
-        <dt title="Parts it connects to, both ways">Mates with</dt>
+        <dt title="The connector family and which side of it this part is">Family</dt>
+        <dd>{% if part.mating_family %}<a href="{{ part.mating_family.get_absolute_url }}">{{ part.mating_family }}</a> · {{ part.get_mating_side_display|default:"side not set" }}{% else %}<span class="muted">—</span>{% endif %}</dd>
+        <dt title="The parts of the family on the other side">Mates with</dt>
         <dd>{% for p in mates_with %}<a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>
         <dt title="Parts used in or with it, e.g. a housing's contacts">Accepts</dt>
         <dd>{% for p in fits %}<a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a>{% if p.name %} <span class="muted">{{ p.name }}</span>{% endif %}<br>{% empty %}<span class="muted">—</span>{% endfor %}</dd>

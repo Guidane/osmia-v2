@@ -1,7 +1,7 @@
 # Osmia
 
 A modular business app for companies that build and test electrical equipment, built on Django in the spirit of Odoo: separate modules
-(Departments, Users, Tasks, Tools, Vendors, Parts, Stock, Orders, Assemblies, Budgets, Devices, Harness, Automations, Audit) that plug into a shared core and extend each other.
+(Departments, Users, Tasks, Tools, Vendors, Parts, Stock, Orders, Assemblies, Budgets, Devices, Harness, Automations, Audit, Demo data) that plug into a shared core and extend each other.
 
 ## Quick start (Windows PowerShell)
 

@@ -41,15 +41,19 @@
 
     <fieldset class="part-links-editor">
       <legend>Goes with</legend>
-      {{ form.mates_with }}{{ form.fits }}
-      {{ form.mates_with.errors }}{{ form.fits.errors }}
+      {{ form.fits }}{{ form.fits.errors }}
       <div class="link-lists">
         <div>
-          <h3 title="{{ form.mates_with.help_text }}">Mates with</h3>
-          <ul class="chips" data-link="mates_with">
-            {% for p in form.mates_with_linked %}<li data-id="{{ p.pk }}"><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.part_number }}</a> <span class="muted">{{ p.name }}</span> <button type="button" class="chip-remove" title="Remove">✕</button></li>{% endfor %}
-          </ul>
-          <small class="muted">{{ form.mates_with.help_text }}</small>
+          <h3 title="{{ form.mating_family.help_text }}">Mates with</h3>
+          <div class="mating-fields">
+            <label>Family {{ form.mating_family }}</label>
+            <label>Side {{ form.mating_side }}</label>
+          </div>
+          {{ form.mating_family.errors }}{{ form.mating_side.errors }}
+          {% with mates=form.instance.mates_with %}{% if mates %}
+            <ul class="chips">{% for p in mates %}<li><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.part_number }}</a> <span class="muted">{{ p.name }}</span></li>{% endfor %}</ul>
+          {% endif %}{% endwith %}
+          <small class="muted">{{ form.mating_family.help_text }} <a href="{% url 'inventory:family_create' %}" target="_blank">New family ↗</a></small>
         </div>
         <div>
           <h3 title="{{ form.fits.help_text }}">Accepts</h3>
@@ -65,9 +69,7 @@
         </div>
       </div>
       <div class="link-add">
-        <span>Add a part as:</span>
-        <label class="check"><input type="radio" name="link-target" value="mates_with" checked form="none"> Mates with</label>
-        <label class="check"><input type="radio" name="link-target" value="fits" form="none"> Accepts</label>
+        <span>Add a part it accepts:</span>
       </div>
       {% include "inventory/_part_picker.html" with picker_id="link-picker" add_label="Add" exclude=form.instance.pk %}
     </fieldset>
@@ -85,7 +87,7 @@
     const select = name => document.querySelector(`select[name="${name}"]`);
     document.getElementById('link-picker').addEventListener('part-picked', e => {
       const part = e.detail;
-      const name = document.querySelector('input[name=link-target]:checked').value;
+      const name = 'fits';
       const s = select(name);
       let opt = [...s.options].find(o => o.value === String(part.id));
       if (!opt) { opt = new Option(part.part_number, part.id); s.appendChild(opt); }

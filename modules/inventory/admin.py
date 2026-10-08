@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Attribute, Category, Part, PartAttributeValue
+from .models import Attribute, Category, MatingFamily, Part, PartAttributeValue
 
 
 class AttributeInline(admin.TabularInline):
@@ -23,7 +23,13 @@ class PartAttributeValueInline(admin.TabularInline):
 @admin.register(Part)
 class PartAdmin(admin.ModelAdmin):
     list_display = ('part_number', 'name', 'category', 'unit', 'is_active')
-    list_filter = ('category', 'is_active')
+    list_filter = ('category', 'mating_family', 'mating_side', 'is_active')
     search_fields = ('part_number', 'name')
-    filter_horizontal = ('mates_with', 'fits', 'tools')
+    filter_horizontal = ('fits', 'tools')
     inlines = [PartAttributeValueInline]
+
+
+@admin.register(MatingFamily)
+class MatingFamilyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name',)

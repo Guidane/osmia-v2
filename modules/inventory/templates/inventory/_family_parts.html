@@ -1,0 +1,9 @@
+<table class="list">
+  <tbody>
+  {% for p in parts %}
+    <tr><td><a href="{{ p.get_absolute_url }}">{{ p.part_number }}</a></td><td>{{ p.name }}</td><td class="muted">{{ p.category|default:"" }}</td></tr>
+  {% empty %}
+    <tr><td class="muted">None.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

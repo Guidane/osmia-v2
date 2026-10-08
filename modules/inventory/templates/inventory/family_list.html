@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Mating families</h1>
+  <a class="btn primary" href="{% url 'inventory:family_create' %}">New family</a>
+</div>
+<p class="muted">Connectors that mate with each other, e.g. D-sub DB25. A part in a family is on the pin or the socket side
+  and mates with the parts on the other side.</p>
+<table class="list">
+  <thead><tr><th>Family</th><th>Description</th><th class="num">Pin</th><th class="num">Socket</th><th class="num">Side not set</th></tr></thead>
+  <tbody>
+  {% for f in object_list %}
+    <tr>
+      <td><a href="{{ f.get_absolute_url }}">{{ f.name }}</a></td>
+      <td>{{ f.description }}</td>
+      <td class="num">{{ f.pin_count }}</td><td class="num">{{ f.socket_count }}</td>
+      <td class="num">{% if f.unset_count %}<span class="badge warn">{{ f.unset_count }}</span>{% else %}0{% endif %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No families yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

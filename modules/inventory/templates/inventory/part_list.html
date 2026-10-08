@@ -26,7 +26,7 @@
       <td>{{ p.name }} {% if not p.is_active %}<span class="badge off">Archived</span>{% endif %}</td>
       <td>{{ p.category|default:"—" }}</td>
       <td>{{ p.unit }}</td>
-      <td class="muted">{% for m in p.mates_with.all %}{% if forloop.first %}mates with {% endif %}{{ m.part_number }}{% if not forloop.last %}, {% endif %}{% endfor %}{% for f in p.fits.all %}{% if forloop.first %}{% if p.mates_with.all %}; {% endif %}accepts {% endif %}{{ f.part_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td class="muted">{% if p.mating_family %}{{ p.mating_family }}{% if p.mating_side %} {{ p.get_mating_side_display|lower }}{% endif %}{% endif %}{% for f in p.fits.all %}{% if forloop.first %}{% if p.mating_family %}; {% endif %}accepts {% endif %}{{ f.part_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
     </tr>
   {% empty %}
     <tr><td colspan="5" class="muted">No parts.</td></tr>

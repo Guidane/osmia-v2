@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>Turn demo data off?</h1>
+  <p>This removes <strong>{{ count }} demo record{{ count|pluralize }}</strong>. The database is backed up first (in <code>data\backups</code>),
+    and you can turn demo data on again.</p>
+  <table class="list">
+    <thead><tr><th>Module</th><th class="num">Demo records</th></tr></thead>
+    <tbody>{% for title, n in by_module %}<tr><td>{{ title }}</td><td class="num">{{ n }}</td></tr>{% endfor %}</tbody>
+  </table>
+
+  {% if own_count %}
+    <div class="flash error">
+      <strong>{{ own_count }} of your own record{{ own_count|pluralize }} would be removed too</strong>, because {{ own_count|pluralize:"it belongs,they belong" }} to demo data:
+      <ul>{% for label, kind in own %}<li>{{ label }} <span class="muted">({{ kind }})</span></li>{% endfor %}</ul>
+      {% if own_more %}<p class="muted">…and {{ own_more }} more.</p>{% endif %}
+      Move them away from the demo data first if you want to keep them.
+    </div>
+  {% endif %}
+  {% if kept_count %}
+    <div class="flash">
+      {{ kept_count }} demo record{{ kept_count|pluralize }} will stay, because your own records use {{ kept_count|pluralize:"it,them" }}:
+      <ul>{% for label, kind in kept %}<li>{{ label }} <span class="muted">({{ kind }})</span></li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button class="btn danger">Remove demo data</button>
+      <a class="btn" href="{% url 'demo_data:index' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

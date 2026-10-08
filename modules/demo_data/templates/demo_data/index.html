@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>🧪 Demo data</h1>
+  {% if enabled %}<span class="badge done">On</span>{% else %}<span class="badge off">Off</span>{% endif %}
+</div>
+
+<section class="card panel">
+  {% if enabled %}
+    <h2>{{ count }} demo record{{ count|pluralize }}</h2>
+    <p class="muted">Example people, parts, tasks and so on, to try Osmia out. Turning demo data off removes them;
+      what you made yourself stays.</p>
+    <table class="list">
+      <thead><tr><th>Module</th><th class="num">Records</th></tr></thead>
+      <tbody>{% for title, n in by_module %}<tr><td>{{ title }}</td><td class="num">{{ n }}</td></tr>{% endfor %}</tbody>
+    </table>
+  {% else %}
+    <h2>No demo data</h2>
+    <p class="muted">Turn it on to fill every installed module with example data: people (alice, bob and carla,
+      password <code>demo</code>), departments, parts, stock, orders, tasks and more. You can turn it off again later.</p>
+  {% endif %}
+
+  {% if can_change %}
+    <div class="actions">
+      <form method="post" action="{% url 'demo_data:load' %}" class="inline">{% csrf_token %}
+        <button class="btn{% if not enabled %} primary{% endif %}">{% if enabled %}Load again (adds what's missing){% else %}Turn demo data on{% endif %}</button>
+      </form>
+      {% if enabled %}<a class="btn danger" href="{% url 'demo_data:remove' %}">Turn demo data off…</a>{% endif %}
+    </div>
+  {% else %}
+    <p class="muted">Only an administrator can turn demo data on or off.</p>
+  {% endif %}
+</section>
+<p class="muted">Demo data is also loaded by "Load demo data" on the setup page and "with demo data" on the
+  <a href="{% url 'core:modules' %}">Modules</a> page; while this module is installed, that's recorded too, so it can be removed here.</p>
+{% endblock %}

@@ -1,16 +1,24 @@
-<table class="list">
-  <thead><tr><th>Task</th><th>Status</th><th>Priority</th>{% if not hide_assignee %}<th>Assignee</th>{% endif %}<th>Due</th></tr></thead>
+{% comment %}Tasks as a table. With `tree` (a key that remembers what's open) it's a tree table (core/tree_table.js):
+pass rows from views.task_tree, which have depth and tree_parent; a row whose parent isn't listed shows the parent's title.{% endcomment %}
+<table class="list{% if tree %} tree-table{% endif %}"{% if tree %} data-tree="{{ tree }}"{% endif %}{% if selectable %} data-select{% endif %}>
+  <thead><tr>{% if selectable %}<th class="select-cell"><input type="checkbox" data-select-all aria-label="Select all tasks"></th>{% endif %}<th>Task</th><th>Group</th><th>Status</th><th>Priority</th>{% if not hide_assignee %}<th>Assignee</th>{% endif %}<th>Due</th></tr></thead>
   <tbody>
   {% for task in tasks %}
-    <tr>
-      <td><a href="{{ task.get_absolute_url }}">{{ task.title }}</a></td>
+    <tr{% if tree %} data-id="{{ task.pk }}" data-parent="{{ task.tree_parent }}" data-depth="{{ task.depth }}"{% endif %}>
+      {% if selectable %}<td class="select-cell"><input type="checkbox" class="row-select" name="tasks" value="{{ task.pk }}" form="move-form" aria-label="Select {{ task.title }}"></td>{% endif %}
+      <td{% if tree %} class="tree-name"{% endif %}>
+        {% if tree %}<span class="tree-indent" style="width: {% widthratio task.depth 1 20 %}px"></span><button type="button" class="tree-toggle" aria-label="Show or hide subtasks" hidden></button>
+          {% if not task.tree_parent and task.parent_id %}<span class="muted">{{ task.parent.title }} › </span>{% endif %}{% endif %}<a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
+        {% if task.subtask_count %}<span class="muted" title="Subtasks done">{{ task.subtasks_done }}/{{ task.subtask_count }}</span>{% endif %}
+      </td>
+      <td>{% include "tasks/_group.html" with group=task.group %}</td>
       <td><span class="badge {{ task.status }}">{{ task.get_status_display }}</span></td>
       <td><span class="badge {{ task.priority_css }}">{{ task.get_priority_display }}</span></td>
       {% if not hide_assignee %}<td>{% if task.assignee %}<a href="{{ task.assignee.get_absolute_url }}">{{ task.assignee }}</a>{% else %}<span class="muted">Unassigned</span>{% endif %}</td>{% endif %}
       <td class="{% if task.is_overdue %}overdue{% endif %}">{{ task.due_date|date|default:"—" }}</td>
     </tr>
   {% empty %}
-    <tr><td colspan="5" class="muted">No tasks.</td></tr>
+    <tr><td colspan="7" class="muted">{{ empty|default:"No tasks." }}</td></tr>
   {% endfor %}
   </tbody>
 </table>

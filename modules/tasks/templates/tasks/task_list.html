@@ -1,9 +1,26 @@
 {% extends "base.html" %}
+{% load osmia_static %}
 {% block content %}
 <div class="toolbar">
   <h1>{% if mine %}My tasks{% else %}Tasks{% endif %}</h1>
   {% include "tasks/_filters.html" %}
+  <button type="button" class="btn small" data-tree-expand="{{ tree }}">Expand all</button>
+  <button type="button" class="btn small" data-tree-collapse="{{ tree }}">Collapse all</button>
   <a class="btn primary" href="{% url 'tasks:create' %}">New task</a>
 </div>
-{% include "tasks/_table.html" with tasks=object_list hide_assignee=mine %}
+<form method="post" action="{% url 'tasks:move' %}" id="move-form" class="move-bar" data-select-bar data-noun="task">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <span data-select-count class="muted">Tick tasks to move them to a group.</span>
+  <select name="group" aria-label="Group">
+    <option value="">No group</option>
+    {% for g in groups %}<option value="{{ g.pk }}">{{ g.name }}</option>{% endfor %}
+  </select>
+  <button class="btn small" data-select-submit disabled>Move to group</button>
+  <button type="button" class="btn small" data-select-clear hidden>Clear</button>
+  <a class="muted" href="{% url 'tasks:groups' %}">Groups…</a>
+</form>
+{% include "tasks/_table.html" with tasks=rows hide_assignee=mine tree=tree selectable=True %}
+{% include "tasks/_pager.html" %}
+<script src="{% versioned_static 'core/tree_table.js' %}"></script>
+<script src="{% versioned_static 'core/select_rows.js' %}"></script>
 {% endblock %}
