@@ -10,12 +10,15 @@ def home(request):
 
 # -- Images attached to records ----------------------------------------------------
 
+import os
+
 from django.apps import apps
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from . import images as image_store
@@ -37,13 +40,20 @@ def _editable(request, image):
 
 
 @login_required
+@xframe_options_sameorigin  # PDFs are shown in the gallery's lightbox
 def image_file(request, pk):
     image = get_object_or_404(Image, pk=pk)
     f = image.thumb if request.GET.get('thumb') and image.thumb else image.file
+    # Pictures and PDFs open in the browser; anything else, or ?download=1, is downloaded.
+    inline = (image.is_image or image.extension == 'pdf') and not request.GET.get('download')
     try:
-        response = FileResponse(f.open('rb'))
+        # Pictures are named after the stored file, as they may have been re-encoded (JPEG to PNG).
+        filename = image.name if image.name and not image.is_image else os.path.basename(f.name)
+        response = FileResponse(f.open('rb'), as_attachment=not inline, filename=filename)
     except FileNotFoundError:
         raise Http404('The image file is missing.')
+    if image.extension == 'pdf':
+        response['Content-Type'] = 'application/pdf'
     response['Cache-Control'] = 'private, max-age=86400'
     return response
 
@@ -69,11 +79,11 @@ def image_upload(request, model, pk):
         except ValidationError as exc:
             errors.extend(exc.messages)
     if added:
-        messages.success(request, f'Added {added} image{"s" if added != 1 else ""}.')
+        messages.success(request, f'Added {added} file{"s" if added != 1 else ""}.')
     for e in errors:
         messages.error(request, e)
     if not files:
-        messages.error(request, 'Pick one or more images to add.')
+        messages.error(request, 'Pick one or more images or files to add.')
     return _back(request, record)
 
 
@@ -85,8 +95,8 @@ def image_update(request, pk):
     action = request.POST.get('action')
     if action == 'delete':
         image.delete()
-        messages.success(request, 'Image removed.')
-    elif action == 'cover':
+        messages.success(request, 'Image removed.' if image.is_image else 'File removed.')
+    elif action == 'cover' and image.is_image:  # only pictures can be the cover
         image_store.make_cover(image)
         messages.success(request, 'Cover image changed.')
     elif action == 'caption':

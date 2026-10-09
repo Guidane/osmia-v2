@@ -274,6 +274,15 @@ tr.pin-removed input { pointer-events: none; }
 .lightbox-caption input { flex: 1; }
 .lightbox-caption-text { padding: 8px 12px; margin: 0; }
 .lightbox-caption-text:empty { display: none; }
+/* Files other than pictures (PDFs, documents, ...) */
+.gallery-file { cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: #fff; }
+.file-ext { padding: 2px 8px; border-radius: 4px; background: var(--brand); color: #fff; font-weight: 600; font-size: 13px; }
+.gallery-file .file-name { font-size: 11px; line-height: 1.25; color: var(--text); text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.lightbox [hidden] { display: none !important; }
+.lightbox-doc { width: 100%; height: calc(94vh - 110px); border: 0; background: #fff; }
+.lightbox-file { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px 16px; }
+.lightbox-file .file-ext { font-size: 20px; padding: 6px 14px; }
+.lightbox-file .file-name { overflow-wrap: anywhere; text-align: center; }
 img.thumb { display: inline-block; border-radius: 4px; object-fit: cover; vertical-align: middle; background: #eceff3; }
 img.avatar { display: inline-block; border-radius: 50%; object-fit: cover; vertical-align: middle; background: #eceff3; }
 

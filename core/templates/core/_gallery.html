@@ -6,22 +6,28 @@
       <form method="post" enctype="multipart/form-data" action="{% url 'core:image_upload' model_label record.pk %}" class="gallery-upload">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <label class="btn small">+ Add images<input type="file" name="images" accept="image/*" multiple hidden></label>
+        <label class="btn small" title="Images, PDFs and other documents">+ Add files<input type="file" name="images" accept="{{ accept }}" multiple hidden></label>
       </form>
     {% endif %}
   </div>
   {% if images %}
     <div class="gallery-grid">
       {% for img in images %}
-        <button type="button" class="gallery-item" data-src="{{ img.url }}" data-caption="{{ img.caption }}" data-id="{{ img.pk }}"
-                data-update="{% url 'core:image_update' img.pk %}" title="{{ img.caption|default:'Open' }}">
-          <img src="{{ img.thumb_url }}" alt="{{ img.caption }}" loading="lazy">
-          {% if forloop.first and images|length > 1 %}<span class="cover-badge">Cover</span>{% endif %}
+        <button type="button" class="gallery-item{% if not img.is_image %} gallery-file{% endif %}" data-src="{{ img.url }}" data-caption="{{ img.caption }}" data-id="{{ img.pk }}"
+                data-kind="{% if img.is_image %}image{% elif img.extension == 'pdf' %}pdf{% else %}file{% endif %}" data-name="{{ img.name }}"
+                data-update="{% url 'core:image_update' img.pk %}" title="{{ img.caption|default:img.name|default:'Open' }}">
+          {% if img.is_image %}
+            <img src="{{ img.thumb_url }}" alt="{{ img.caption }}" loading="lazy">
+            {% if img.pk == cover_id %}<span class="cover-badge">Cover</span>{% endif %}
+          {% else %}
+            <span class="file-ext">{{ img.extension|upper|default:"FILE" }}</span>
+            <span class="file-name">{{ img.caption|default:img.name }}</span>
+          {% endif %}
         </button>
       {% endfor %}
     </div>
   {% else %}
-    <p class="muted gallery-empty">{% if empty %}{{ empty }}{% else %}No images yet.{% endif %}{% if can_edit %} Add some, or drop them here.{% endif %}</p>
+    <p class="muted gallery-empty">{% if empty %}{{ empty }}{% else %}No images or files yet.{% endif %}{% if can_edit %} Add some, or drop them here.{% endif %}</p>
   {% endif %}
 
   <dialog class="lightbox">
@@ -31,15 +37,18 @@
       {% if can_edit %}
         <form method="post" class="lightbox-form">{% csrf_token %}
           <input type="hidden" name="next" value="{{ next }}">
-          <button class="btn small" name="action" value="cover" title="Show this image first">Make cover</button>
-          <button class="btn small" name="action" value="delete" data-confirm="Remove this image?">Remove</button>
+          <button class="btn small lightbox-cover" name="action" value="cover" title="Show this image first">Make cover</button>
+          <button class="btn small" name="action" value="delete" data-confirm="Remove this file?">Remove</button>
         </form>
       {% endif %}
+      <a class="btn small lightbox-download" href="#">Download</a>
       <button type="button" class="btn small lightbox-close" title="Close (Esc)">✕</button>
     </div>
     <div class="lightbox-stage">
       <button type="button" class="lightbox-nav prev" title="Previous (←)">‹</button>
       <img alt="">
+      <iframe class="lightbox-doc" title="Document" hidden></iframe>
+      <div class="lightbox-file" hidden><span class="file-ext"></span><span class="file-name"></span></div>
       <button type="button" class="lightbox-nav next" title="Next (→)">›</button>
     </div>
     {% if can_edit %}

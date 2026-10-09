@@ -1,5 +1,6 @@
 // Image galleries ({% image_gallery %}): upload on pick or drop, and a lightbox
-// with previous/next, captions, "make cover" and remove.
+// with previous/next, captions, "make cover" and remove. PDFs open in the
+// lightbox too; other files show their name and a Download button.
 (function () {
   if (window.OsmiaGallery) { window.OsmiaGallery.init(); return; }
 
@@ -28,6 +29,10 @@
     const box = gallery.querySelector('.lightbox');
     if (!items.length || !box) return;
     const img = box.querySelector('.lightbox-stage img');
+    const doc = box.querySelector('.lightbox-doc');
+    const file = box.querySelector('.lightbox-file');
+    const download = box.querySelector('.lightbox-download');
+    const cover = box.querySelector('.lightbox-cover');
     const count = box.querySelector('.lightbox-count');
     const captionInput = box.querySelector('.lightbox-caption input[name=caption]');
     const captionText = box.querySelector('.lightbox-caption-text');
@@ -36,7 +41,20 @@
     function show(i) {
       index = (i + items.length) % items.length;
       const item = items[index];
-      img.src = item.dataset.src;
+      const kind = item.dataset.kind || 'image';
+      // Pictures show as an image, PDFs in the browser's viewer, other files as a name to download.
+      img.hidden = kind !== 'image';
+      doc.hidden = kind !== 'pdf';
+      file.hidden = kind !== 'file';
+      if (kind === 'image') img.src = item.dataset.src; else img.removeAttribute('src');
+      if (kind === 'pdf') doc.src = item.dataset.src; else doc.removeAttribute('src');
+      if (kind === 'file') {
+        file.querySelector('.file-ext').textContent = item.querySelector('.file-ext').textContent;
+        file.querySelector('.file-name').textContent = item.dataset.name || '';
+      }
+      download.href = item.dataset.src + (item.dataset.src.includes('?') ? '&' : '?') + 'download=1';
+      download.hidden = kind === 'image';
+      if (cover) cover.hidden = kind !== 'image';
       img.alt = item.dataset.caption || '';
       count.textContent = `${index + 1} / ${items.length}`;
       if (captionInput) captionInput.value = item.dataset.caption || '';
@@ -48,6 +66,7 @@
     box.querySelector('.prev').addEventListener('click', () => show(index - 1));
     box.querySelector('.next').addEventListener('click', () => show(index + 1));
     box.querySelector('.lightbox-close').addEventListener('click', () => box.close());
+    box.addEventListener('close', () => doc.removeAttribute('src'));  // stop loading a closed PDF
     box.addEventListener('click', e => { if (e.target === box) box.close(); });  // click the backdrop
     box.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT') return;

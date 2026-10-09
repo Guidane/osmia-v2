@@ -7,17 +7,20 @@ from django.urls import reverse
 
 
 class Image(models.Model):
-    """A picture attached to any record (a part, a task, a user, ...).
+    """A picture or other file (a PDF datasheet, a drawing, ...) attached to any
+    record (a part, a task, a user, ...).
 
     A module opts in by giving its model ``images = GenericRelation('core.Image')``;
     pages then show them with ``{% image_gallery record %}`` (osmia_images).
-    The first image (lowest position) is the record's cover.
+    The first picture (lowest position) is the record's cover. Pictures have a
+    thumbnail; other files don't.
     """
     content_type = models.ForeignKey('contenttypes.ContentType', on_delete=models.CASCADE)
     object_id = models.PositiveBigIntegerField()
     record = GenericForeignKey('content_type', 'object_id')
-    file = models.ImageField(upload_to='images/%Y/%m/')
-    thumb = models.ImageField(upload_to='images/thumbs/%Y/%m/')
+    file = models.FileField(upload_to='images/%Y/%m/')
+    thumb = models.FileField(upload_to='images/thumbs/%Y/%m/', blank=True)
+    name = models.CharField(max_length=255, blank=True)  # the uploaded file's name, for downloads
     width = models.PositiveIntegerField(default=0, editable=False)
     height = models.PositiveIntegerField(default=0, editable=False)
     caption = models.CharField(max_length=200, blank=True)
@@ -31,7 +34,15 @@ class Image(models.Model):
         indexes = [models.Index(fields=['content_type', 'object_id'])]
 
     def __str__(self):
-        return self.caption or f'Image {self.pk}'
+        return self.caption or self.name or f'Image {self.pk}'
+
+    @property
+    def is_image(self):
+        return bool(self.thumb)
+
+    @property
+    def extension(self):
+        return self.file.name.rsplit('.', 1)[-1].lower() if '.' in self.file.name else ''
 
     def audit_record(self):
         return self.record  # logged in the module of the part, task, ... it belongs to

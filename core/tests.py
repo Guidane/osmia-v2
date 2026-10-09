@@ -149,6 +149,7 @@ from django.test import override_settings
 from PIL import Image as PILImage
 
 from core.models import Image
+from core.templatetags.osmia_images import cover_thumb
 from devices.models import Device
 from harness.models import HarnessProject
 
@@ -216,6 +217,41 @@ class ImageTests(TestCase):
         response = self.upload(self.part, SimpleUploadedFile('x.jpg', b'nope'), follow=True)
         self.assertContains(response, 'not an image Osmia can read')
 
+    def test_pdfs_and_other_files(self):
+        pdf = b'%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n'
+        self.upload(self.part, SimpleUploadedFile('Datasheet.pdf', pdf, content_type='application/pdf'),
+                    SimpleUploadedFile('Wiring notes.docx', b'PK\x03\x04 not checked', content_type='application/octet-stream'),
+                    picture('side.jpg', (80, 80)))
+        sheet, notes, photo = self.part.images.all()
+        self.assertEqual((sheet.name, sheet.extension, sheet.is_image), ('Datasheet.pdf', 'pdf', False))
+        self.assertFalse(sheet.thumb)
+        with open(sheet.file.path, 'rb') as stored:
+            self.assertEqual(stored.read(), pdf)  # kept as it is
+
+        response = self.client.get(sheet.url)  # PDFs open in the browser, also in the lightbox's frame
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response['Content-Disposition'].startswith('inline'))
+        self.assertEqual(response['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertIn('attachment', self.client.get(sheet.url + '?download=1')['Content-Disposition'])
+        response = self.client.get(notes.url)  # anything else is downloaded, under its own name
+        self.assertEqual(response['Content-Disposition'], 'attachment; filename="Wiring notes.docx"')
+
+        page = self.client.get(self.part.get_absolute_url())
+        self.assertContains(page, '<span class="file-ext">PDF</span>', html=True)
+        self.assertContains(page, '+ Add files')
+        # The cover (in lists too) is the first picture, not the PDF.
+        self.assertContains(page, f'data-id="{photo.pk}"')
+        self.assertIn(photo.thumb_url, str(cover_thumb(self.part)))
+        self.client.post(reverse('core:image_update', args=[notes.pk]), {'action': 'cover'})
+        self.assertEqual(list(self.part.images.all()), [sheet, notes, photo])  # files can't be the cover
+
+        response = self.upload(self.part, SimpleUploadedFile('fake.pdf', b'just text'), SimpleUploadedFile('run.exe', b'MZ'),
+                               SimpleUploadedFile('page.html', b'<script>'), follow=True)
+        self.assertContains(response, 'fake.pdf is not a PDF Osmia can read')
+        self.assertContains(response, '.exe files can&#x27;t be added')
+        self.assertContains(response, '.html files can&#x27;t be added')
+        self.assertEqual(self.part.images.count(), 3)
+
     def test_only_models_with_images(self):
         budget_url = reverse('core:image_upload', args=['budgets.budget', 1])
         self.assertEqual(self.client.post(budget_url, {'images': [picture()]}).status_code, 404)
@@ -228,7 +264,7 @@ class ImageTests(TestCase):
         self.upload(bob, picture())
         self.assertEqual(bob.images.count(), 1)
         page = self.client.get(carla.get_absolute_url())
-        self.assertNotContains(page, '+ Add images')
+        self.assertNotContains(page, '+ Add files')
         self.assertEqual(self.client.post(reverse('core:image_update', args=[bob.images.get().pk]), {'action': 'delete'}).status_code, 302)
         self.client.login(username='admin', password='admin')
         self.upload(carla, picture())

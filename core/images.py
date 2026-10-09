@@ -1,5 +1,6 @@
-"""Attaching images to records: checking, resizing and storing uploads."""
+"""Attaching images and other files to records: checking, resizing and storing uploads."""
 import io
+import os
 import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
@@ -16,6 +17,14 @@ MAX_FILES = 20
 MAX_SIDE = 2000   # stored image, longest side
 THUMB_SIDE = 400  # thumbnail, longest side
 FORMATS = {'JPEG', 'PNG', 'GIF', 'WEBP', 'BMP', 'TIFF'}
+IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'jpe', 'png', 'gif', 'webp', 'bmp', 'tif', 'tiff'}
+# Files other than pictures, stored as they are. PDFs open in the browser, the
+# rest are downloaded (never shown inline, so an uploaded page can't run scripts).
+FILE_EXTENSIONS = {
+    'pdf', 'txt', 'csv', 'rtf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
+    'zip', '7z', 'step', 'stp', 'iges', 'igs', 'stl', 'dxf', 'dwg',
+}
+ACCEPT = 'image/*,' + ','.join(f'.{ext}' for ext in sorted(FILE_EXTENSIONS))  # for <input type=file>
 
 
 def accepts_images(model):
@@ -46,13 +55,39 @@ def _encode(img, side):
     return out.getvalue(), 'jpg', img.size
 
 
+def _next_position(record):
+    last = record.images.aggregate(m=Max('position'))['m']
+    return 0 if last is None else last + 1
+
+
+def _add_file(record, upload, name, ext, user, caption):
+    """Store a non-picture upload as it is."""
+    if ext == 'pdf':
+        head = upload.read(1024)
+        upload.seek(0)
+        if b'%PDF-' not in head:
+            raise ValidationError(f'{name} is not a PDF Osmia can read.')
+    item = Image(record=record, caption=caption[:200], name=name[:255], uploaded_by=user if getattr(user, 'pk', None) else None,
+                 position=_next_position(record))
+    item.file.save(f'{uuid.uuid4().hex}.{ext}', upload, save=False)
+    item.save()
+    return item
+
+
 def add_image(record, upload, user=None, caption=''):
-    """Store an uploaded file as an image of ``record``. The picture is turned
+    """Store an uploaded file as an image of ``record``. A picture is turned
     upright, scaled down to at most MAX_SIDE and re-encoded, which also drops
-    its metadata (camera, GPS position, ...)."""
-    name = getattr(upload, 'name', 'image')
+    its metadata (camera, GPS position, ...). Other files (FILE_EXTENSIONS,
+    e.g. a PDF) are kept as they are."""
+    name = os.path.basename(getattr(upload, 'name', '') or 'image')
     if upload.size > MAX_UPLOAD_BYTES:
         raise ValidationError(f'{name} is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.')
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext in FILE_EXTENSIONS:
+        return _add_file(record, upload, name, ext, user, caption)
+    if ext and ext not in IMAGE_EXTENSIONS:
+        raise ValidationError(f'{name}: .{ext} files can\'t be added. Use an image, a PDF or another document '
+                              f'({", ".join(sorted(FILE_EXTENSIONS))}).')
     try:
         img = PILImage.open(upload)
         if img.format not in FORMATS:
@@ -64,9 +99,8 @@ def add_image(record, upload, user=None, caption=''):
     stem = uuid.uuid4().hex
     full, ext, (width, height) = _encode(img, MAX_SIDE)
     small, thumb_ext, _ = _encode(img, THUMB_SIDE)
-    last = record.images.aggregate(m=Max('position'))['m']
-    image = Image(record=record, caption=caption[:200], uploaded_by=user if getattr(user, 'pk', None) else None,
-                  position=0 if last is None else last + 1, width=width, height=height)
+    image = Image(record=record, caption=caption[:200], name=name[:255], uploaded_by=user if getattr(user, 'pk', None) else None,
+                  position=_next_position(record), width=width, height=height)
     image.file.save(f'{stem}.{ext}', ContentFile(full), save=False)
     image.thumb.save(f'{stem}.{thumb_ext}', ContentFile(small), save=False)
     image.save()
