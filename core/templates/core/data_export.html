@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Export all data · Osmia{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Export all data</h1>
+  <p class="muted">One <code>.zip</code> to import on another Osmia with <strong>Import and replace</strong> on its Modules page.</p>
+
+  <table class="list">
+    <thead><tr><th>What</th><th>Size</th></tr></thead>
+    <tbody>
+      <tr><td>Database <small class="muted">(all records, user accounts and passwords)</small></td>
+        <td>{{ sizes.database|filesizeformat }}</td></tr>
+      <tr><td>Uploaded images and files <small class="muted">({{ sizes.file_count }} file{{ sizes.file_count|pluralize }})</small></td>
+        <td>{{ sizes.files|filesizeformat }}</td></tr>
+      <tr><td>Modules <small class="muted">({% for m in modules %}{{ m.title }} {{ m.version }}{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %})</small></td>
+        <td>{{ sizes.modules|filesizeformat }}</td></tr>
+      <tr><td><strong>Total</strong> <small class="muted">(the .zip is about this size or smaller, as it's compressed)</small></td>
+        <td><strong>{{ sizes.total|filesizeformat }}</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Space needed</h2>
+  <table class="list">
+    <tbody>
+      <tr><td>Here, to build the export <small class="muted">(in <code>{{ temp_dir }}</code>)</small></td>
+        <td>{{ need_here|filesizeformat }}</td>
+        <td>{% if enough_here %}<span class="badge done">{{ free_here|filesizeformat }} free</span>
+          {% else %}<span class="badge high">only {{ free_here|filesizeformat }} free</span>{% endif %}</td></tr>
+      <tr><td>Where you save the download</td><td>{{ sizes.total|filesizeformat }}</td><td class="muted">at most</td></tr>
+      <tr><td>On the other Osmia, to import it <small class="muted">(the upload and the unpacked data, freed again afterwards)</small></td>
+        <td>{{ need_there|filesizeformat }}</td>
+        <td class="muted">plus the size of its own database and files, which are kept as a backup</td></tr>
+    </tbody>
+  </table>
+
+  {% if not enough_here %}
+    <div class="flash error">There isn't enough free space here to build the export. Free up
+      {{ need_here|filesizeformat }} in <code>{{ temp_dir }}</code> first.</div>
+  {% endif %}
+  <p class="muted">Keep the export safe: anyone with it can read all of Osmia's data.</p>
+  <div class="actions">
+    {% if enough_here %}<a class="btn primary" href="{% url 'core:data_export_download' %}">⬇ Download the export</a>{% endif %}
+    <a class="btn" href="{% url 'core:modules' %}#move-data">Back to Modules</a>
+  </div>
+</div>
+{% endblock %}

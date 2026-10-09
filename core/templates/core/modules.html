@@ -66,6 +66,36 @@
   {% endif %}
 </section>
 
+<section class="card panel" id="move-data">
+  <h2>Move to another Osmia</h2>
+  <p class="muted">Copy everything to another server, e.g. from a test setup to the real one: the database (including user
+    accounts and passwords), every uploaded image and file, and the installed modules.</p>
+  <div class="grid-2">
+    <div>
+      <h3>Export</h3>
+      <p class="muted">One <code>.zip</code> with all of it. Keep it safe: anyone with it can read all of Osmia's data.</p>
+      <a class="btn primary" href="{% url 'core:data_export' %}">⬇ Export all data</a>
+    </div>
+    {% if can_change %}
+      <div>
+        <h3>Import</h3>
+        <p class="muted">Replace <strong>everything</strong> on this Osmia with an export from another one.
+          Osmia restarts to do it; afterwards you log in with the other Osmia's accounts.
+          This database, its files and modules are kept in <code>{{ data_dir }}\backups</code> and
+          <code>{{ data_dir }}\addons\previous</code>, and a failed import is undone completely.</p>
+        <form method="post" action="{% url 'core:data_import' %}" enctype="multipart/form-data" class="form"
+              onsubmit="return confirm('Replace ALL data on this Osmia with this export?')">
+          {% csrf_token %}
+          <div class="field"><input type="file" name="export" accept=".zip,application/zip" required></div>
+          <div class="field"><label><input type="checkbox" name="confirm" value="1" required>
+            Replace all data, files and modules on this Osmia</label></div>
+          <button class="btn danger">Import and replace</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
 {% if can_change %}
 <div class="grid-2">
   <section class="card panel">

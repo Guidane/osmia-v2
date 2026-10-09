@@ -25,6 +25,10 @@
   async function poll() {
     try {
       const r = await fetch(box.dataset.statusUrl, {cache: 'no-store', credentials: 'same-origin'});
+      if (r.redirected) {  // back up, but logged out: an import replaced the accounts
+        location.href = box.dataset.doneUrl;
+        return;
+      }
       if (r.ok) {
         const s = await r.json();
         if (!s.pending) {

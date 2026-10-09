@@ -52,7 +52,8 @@ def child(host, port, threads):
         make_server(host, port, app, server_class=ThreadingServer).serve_forever()
         return
     say(f'Osmia is running on http://{host}:{port}/')
-    serve(app, host=host, port=port, threads=threads, max_request_body_size=60 * 1024 * 1024)
+    # Big enough for a data export from another Osmia (Modules page); waitress buffers it to disk.
+    serve(app, host=host, port=port, threads=threads, max_request_body_size=20 * 1024 ** 3)
 
 
 def supervise(args):

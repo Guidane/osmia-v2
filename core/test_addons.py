@@ -177,6 +177,22 @@ class ApplyTests(SimpleTestCase):
         self.assertNotIn('widgets', self.store.installed())
         self.assertFalse((self.store.modules_dir / 'widgets').exists())
 
+    def test_start_migrates_when_new_migrations_arrive(self):
+        (self.tmp / 'db.sqlite3').write_bytes(b'')
+        self.apply([self.stage()])
+        (self.store.modules_dir / 'widgets' / 'migrations').mkdir()
+
+        def start():
+            with mock.patch.object(addons, '_manage', return_value=True) as manage:
+                addons.boot(self.store)
+            return [c.args[0][0] for c in manage.call_args_list]
+        with mock.patch.dict('os.environ', {'OSMIA_DEV_MODULES': ''}):
+            self.assertEqual(start(), ['migrate'])  # first start with this marker
+            self.assertEqual(start(), [])  # nothing new
+            (self.store.modules_dir / 'widgets' / 'migrations' / '0001_initial.py').write_text('')  # e.g. after a git pull
+            self.assertEqual(start(), ['migrate'])
+            self.assertEqual(start(), [])
+
     def test_one_change_at_a_time(self):
         self.store.queue([{'op': 'enable', 'label': 'x'}])
         with self.assertRaisesMessage(addons.PackageError, 'already waiting'):
@@ -354,3 +370,194 @@ class SetupTests(TestCase):
         self.assertEqual([op['label'] for op in job['ops']], ['departments', 'tasks'])
         self.assertEqual(job['demo'], ['users', 'departments', 'tasks'])
         self.assertEqual(job['requested_by'], 'boss')
+
+
+# -- Moving all the data to another Osmia ------------------------------------------
+
+import sqlite3  # noqa: E402
+
+
+def make_db(path, value):
+    db = sqlite3.connect(path)
+    try:
+        with db:
+            db.execute('CREATE TABLE IF NOT EXISTS t (v TEXT)')
+            db.execute('DELETE FROM t')
+            db.execute('INSERT INTO t VALUES (?)', (value,))
+    finally:
+        db.close()
+
+
+def db_value(path):
+    db = sqlite3.connect(path)
+    try:
+        return db.execute('SELECT v FROM t').fetchone()[0]
+    finally:
+        db.close()
+
+
+class DataMoveTests(SimpleTestCase):
+    """Exporting one Osmia's data and importing it into another (manage.py stubbed out)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.dev = addons.Store(self.tmp / 'dev')   # where the data comes from
+        self.prod = addons.Store(self.tmp / 'prod')  # where it goes
+        for store, name in ((self.dev, 'dev'), (self.prod, 'prod')):
+            store.root.mkdir(parents=True)
+            make_db(store.db_file, name)
+            media = store.data_dir / 'media' / 'images' / '2026' / '10'
+            media.mkdir(parents=True)
+            (media / f'{name}.pdf').write_bytes(b'%PDF-' + name.encode())
+        self.add_module(self.dev, 'widgets')
+        (self.dev.modules_dir / 'widgets' / '__pycache__').mkdir()
+        (self.dev.modules_dir / 'widgets' / '__pycache__' / 'x.pyc').write_bytes(b'')
+        self.add_module(self.prod, 'gadgets')  # prod's own module, replaced by the import
+
+    def add_module(self, store, label):
+        for name, data in module_files(label, prefix='').items():
+            (store.modules_dir / label).mkdir(parents=True, exist_ok=True)
+            (store.modules_dir / label / name).write_text(data, encoding='utf-8')
+        entry = {**addons.check_manifest(json.loads(manifest(label))), 'enabled': True, 'previous': [{'version': '0.9'}]}
+        store.save_state({'modules': {label: entry}})
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def export(self):
+        path = self.tmp / 'export.zip'
+        addons.export_data(self.dev, path, self.dev.data_dir / 'media', self.dev.installed(), self.dev.modules_dir, user='ann')
+        return path
+
+    def queue_import(self, path):
+        info = addons.read_export(path)
+        staging = self.prod.new_staging()
+        addons.extract_export(path, staging)
+        self.prod.queue([{'op': 'import', 'label': '', 'source': 'the dev data', 'media_root': str(self.prod.data_dir / 'media'),
+                          'staging': staging.relative_to(self.prod.root).as_posix()}], user='admin')
+        return info
+
+    def test_export_holds_everything(self):
+        with zipfile.ZipFile(self.export()) as zf:
+            names = set(zf.namelist())
+            info = json.loads(zf.read(addons.DATA_INFO))
+        self.assertEqual(names, {'osmia-data.json', 'db.sqlite3', 'media/images/2026/10/dev.pdf',
+                                 'modules/widgets/manifest.json', 'modules/widgets/__init__.py', 'modules/widgets/apps.py'})
+        self.assertEqual((info['exported_by'], info['files'], list(info['modules'])), ('ann', 1, ['widgets']))
+        self.assertNotIn('previous', info['modules']['widgets'])  # rollbacks belong to the old server
+        sizes = addons.export_sizes(self.dev, self.dev.data_dir / 'media', self.dev.installed(), self.dev.modules_dir)
+        module_bytes = sum(p.stat().st_size for p in (self.dev.modules_dir / 'widgets').glob('*.*'))  # not the __pycache__
+        self.assertEqual((sizes['file_count'], sizes['files'], sizes['modules']), (1, 8, module_bytes))
+        self.assertEqual(sizes['total'], self.dev.db_file.stat().st_size + 8 + module_bytes)
+
+    def test_import_replaces_everything(self):
+        self.queue_import(self.export())
+        with mock.patch.object(addons, '_manage', return_value=True) as manage:
+            result = addons.apply_pending(self.prod)
+        self.assertTrue(result['ok'], result['log'])
+        self.assertEqual(result['changes'], ['Replace all data with the dev data'])
+        self.assertEqual([c.args[0][0] for c in manage.call_args_list], ['migrate', 'check'])
+        self.assertEqual(db_value(self.prod.db_file), 'dev')
+        media = self.prod.data_dir / 'media' / 'images' / '2026' / '10'
+        self.assertEqual([p.name for p in media.iterdir()], ['dev.pdf'])
+        self.assertEqual(list(self.prod.installed()), ['widgets'])
+        self.assertEqual(self.prod.installed()['widgets']['previous'], [])
+        self.assertTrue((self.prod.modules_dir / 'widgets' / 'apps.py').is_file())
+        self.assertFalse((self.prod.modules_dir / 'gadgets').exists())
+        # What prod had is kept: its database backup, files and modules.
+        self.assertEqual(db_value(self.prod.backups_dir / result['backup']), 'prod')
+        self.assertTrue(list(self.prod.backups_dir.glob('media-before-import-*/images/2026/10/prod.pdf')))
+        self.assertTrue(list(self.prod.previous_dir.glob('before-import-*/gadgets/apps.py')))
+        self.assertEqual(list(self.prod.staging_dir.iterdir()), [])
+
+    def test_failed_import_is_undone(self):
+        self.queue_import(self.export())
+        with mock.patch.object(addons, '_manage', return_value=False):
+            result = addons.apply_pending(self.prod)
+        self.assertFalse(result['ok'])
+        self.assertEqual(db_value(self.prod.db_file), 'prod')
+        self.assertTrue((self.prod.data_dir / 'media' / 'images' / '2026' / '10' / 'prod.pdf').is_file())
+        self.assertEqual(list(self.prod.installed()), ['gadgets'])
+        self.assertTrue((self.prod.modules_dir / 'gadgets' / 'apps.py').is_file())
+        self.assertFalse((self.prod.modules_dir / 'widgets').exists())
+
+    def test_refused_exports(self):
+        info = lambda **extra: json.dumps({'format': 1, 'osmia': addons.OSMIA_VERSION, 'modules': {}, **extra})
+        good = {addons.DATA_INFO: info(), 'db.sqlite3': ''}
+        for files, message in [
+            (module_files(), 'not an Osmia data export'),
+            ({**good, addons.DATA_INFO: info(osmia='99.0')}, 'Update this Osmia first'),
+            ({addons.DATA_INFO: info()}, 'no database'),
+            ({**good, '../evil.py': ''}, 'unsafe path'),
+            ({**good, 'settings.py': ''}, "isn't Osmia data"),
+            ({**good, addons.DATA_INFO: info(modules={'widgets': {}})}, "doesn't contain it"),
+        ]:
+            with self.subTest(message):
+                with self.assertRaisesMessage(addons.PackageError, message):
+                    addons.read_export(io.BytesIO(make_zip(files)))
+
+
+class DataMovePageTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        get_user_model().objects.create_superuser('admin', 'a@example.com', 'admin')
+        get_user_model().objects.create_user('bob', password='demo', is_staff=True)
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.store = addons.Store(self.tmp)
+        self.store.root.mkdir(parents=True)
+        make_db(self.store.db_file, 'here')
+        (self.tmp / 'media').mkdir()
+        (self.tmp / 'media' / 'a.jpg').write_bytes(b'jpeg')
+        self.override = override_settings(ADDONS=self.store, OSMIA_DEV=False, MEDIA_ROOT=self.tmp / 'media')
+        self.override.enable()
+        self.client.login(username='admin', password='admin')
+
+    def tearDown(self):
+        self.override.disable()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_export_and_import(self):
+        self.assertContains(self.client.get(reverse('core:modules')), 'Export all data')
+        resp = self.client.get(reverse('core:data_export'))  # the overview first
+        db_size = self.store.db_file.stat().st_size
+        self.assertEqual(resp.context['sizes'], {'database': db_size, 'files': 4, 'file_count': 1, 'modules': 0, 'total': db_size + 4})
+        self.assertEqual(resp.context['need_there'], 2 * (db_size + 4))
+        self.assertContains(resp, '1 file)')
+        self.assertContains(resp, reverse('core:data_export_download'))
+        with mock.patch('shutil.disk_usage', return_value=mock.Mock(free=10)):
+            resp = self.client.get(reverse('core:data_export'))
+        self.assertContains(resp, "isn't enough free space")
+        self.assertNotContains(resp, reverse('core:data_export_download'))
+
+        resp = self.client.get(reverse('core:data_export_download'))
+        self.assertTrue(resp['Content-Disposition'].startswith('attachment; filename="osmia-data-'))
+        data = b''.join(resp.streaming_content)
+        self.assertEqual(addons.read_export(io.BytesIO(data))['exported_by'], 'admin')
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            self.assertEqual(zf.read('media/a.jpg'), b'jpeg')
+
+        def upload(**extra):
+            return self.client.post(reverse('core:data_import'), {'export': SimpleUploadedFile('d.zip', data), **extra}, follow=True)
+        self.assertContains(upload(), 'Tick the box')
+        self.assertIsNone(self.store.pending())
+        self.assertRedirects(upload(confirm='1'), reverse('core:modules_applying'))
+        op = self.store.pending()['ops'][0]
+        self.assertEqual((op['op'], op['media_root']), ('import', str(self.tmp / 'media')))
+        self.assertTrue((self.store.root / op['staging'] / 'media' / 'a.jpg').is_file())
+
+    def test_refusals(self):
+        resp = self.client.post(reverse('core:data_import'), {'export': SimpleUploadedFile('m.zip', make_zip(module_files())),
+                                                              'confirm': '1'}, follow=True)
+        self.assertContains(resp, 'not an Osmia data export')
+        self.assertIsNone(self.store.pending())
+        self.assertEqual(list(self.store.staging_dir.glob('*')), [])
+        self.client.login(username='bob', password='demo')
+        self.assertEqual(self.client.get(reverse('core:data_export')).status_code, 302)
+        self.assertEqual(self.client.get(reverse('core:data_export_download')).status_code, 302)
+        with override_settings(OSMIA_DEV=True):  # running from source: export only
+            self.client.login(username='admin', password='admin')
+            page = self.client.get(reverse('core:modules'))
+            self.assertContains(page, 'Export all data')
+            self.assertNotContains(page, 'Import and replace')

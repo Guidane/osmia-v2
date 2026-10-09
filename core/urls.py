@@ -18,6 +18,9 @@ urlpatterns = [
     path('modules/cancel/', module_views.module_cancel, name='modules_cancel'),
     path('modules/applying/', module_views.module_applying, name='modules_applying'),
     path('modules/status/', module_views.module_status, name='modules_status'),
+    path('modules/data/export/', module_views.data_export, name='data_export'),
+    path('modules/data/export/download/', module_views.data_export_download, name='data_export_download'),
+    path('modules/data/import/', module_views.data_import, name='data_import'),
     path('modules/<str:label>/download/', module_views.module_download, name='modules_download'),
     path('modules/<str:label>/<str:action>/', module_views.module_change, name='modules_change'),
 ]

@@ -27,6 +27,10 @@ can use it too. Everything lives under the data folder::
         staging/<id>/<label>/     uploads waiting to be installed
         pending.json              the queued change
         results.json              what the last changes did
+
+The same queue moves a whole Osmia to another server: ``export_data()``
+packs the database, the uploaded files and the installed modules into one
+``.zip``, and an ``import`` op swaps them in on the other side.
 """
 import io
 import json
@@ -37,6 +41,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 import zipfile
@@ -64,6 +69,13 @@ SKIPPED = ('__pycache__/', '__MACOSX/', '.git/')
 KEEP_BACKUPS = 20
 KEEP_RESULTS = 30
 RESTART_EXIT_CODE = 3  # serve.py and Django's runserver both restart on it
+
+# Data exports (moving an Osmia to another server)
+DATA_INFO = 'osmia-data.json'
+DATA_FORMAT = 1
+MAX_DATA_BYTES = 50 * 1024 ** 3  # unpacked
+MAX_DATA_FILES = 1_000_000
+STORED_AS_IS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.zip', '.7z', '.docx', '.xlsx', '.pptx'}  # compressed already
 
 
 class PackageError(Exception):
@@ -374,12 +386,7 @@ class Store:
         self.backups_dir.mkdir(parents=True, exist_ok=True)
         slug = re.sub(r'[^a-z0-9]+', '-', reason.lower()).strip('-')[:40]
         name = f'db-{datetime.now():%Y%m%d-%H%M%S}-{slug}.sqlite3'
-        src, dst = sqlite3.connect(self.db_file), sqlite3.connect(self.backups_dir / name)
-        try:
-            src.backup(dst)
-        finally:
-            src.close()
-            dst.close()
+        _copy_db(self.db_file, self.backups_dir / name)
         self._prune_backups()
         return name
 
@@ -398,9 +405,154 @@ class Store:
         src = self.backups_dir / name
         if not src.is_file():
             raise PackageError(f'The backup {name} is missing.')
+        self.replace_db(src)
+
+    def replace_db(self, src):
         for suffix in ('-wal', '-shm', '-journal'):
             Path(str(self.db_file) + suffix).unlink(missing_ok=True)
         shutil.copyfile(src, self.db_file)
+
+
+def _copy_db(src, dst):
+    """Copy an SQLite database, safely even while it's in use."""
+    a, b = sqlite3.connect(src), sqlite3.connect(dst)
+    try:
+        a.backup(b)
+    finally:
+        a.close()
+        b.close()
+
+
+# -- Moving all the data to another Osmia ------------------------------------------
+
+def _export_files(folder):
+    """The files of ``folder`` that go into an export (caches left out)."""
+    folder = Path(folder)
+    if not folder.is_dir():
+        return
+    for path in sorted(folder.rglob('*')):
+        rel = path.relative_to(folder).as_posix()
+        if path.is_file() and not any(s in rel + '/' for s in SKIPPED) and not rel.endswith('.pyc'):
+            yield path, rel
+
+
+def export_sizes(store, media_root, modules, module_dir):
+    """What an export would hold, in bytes before compression:
+    {'database', 'files', 'file_count', 'modules', 'total'}."""
+    database = sum(p.stat().st_size for p in (store.db_file, Path(str(store.db_file) + '-wal')) if p.exists())
+    media = [p.stat().st_size for p, _ in _export_files(media_root)]
+    code = sum(p.stat().st_size for label in modules for p, _ in _export_files(Path(module_dir) / label))
+    return {'database': database, 'files': sum(media), 'file_count': len(media), 'modules': code,
+            'total': database + sum(media) + code}
+
+
+def export_data(store, out, media_root, modules, module_dir, user=''):
+    """Write everything this Osmia holds to the zip file ``out`` (a path or a file):
+
+        osmia-data.json     what's in it: Osmia version, modules, when and by whom
+        db.sqlite3          the database
+        media/...           the uploaded images and files
+        modules/<label>/... the installed modules, so the other Osmia runs the same code
+
+    ``modules`` is {label: installed entry}; their folders are in ``module_dir``.
+    Returns the info written to osmia-data.json.
+    """
+    media_root, module_dir = Path(media_root), Path(module_dir)
+    info = {
+        'format': DATA_FORMAT, 'osmia': OSMIA_VERSION, 'exported_at': _now(), 'exported_by': user,
+        'modules': {l: {k: v for k, v in e.items() if k not in ('previous', 'installed_at')} for l, e in modules.items()},
+        'files': 0,
+    }
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+            if store.db_file.exists():
+                _copy_db(store.db_file, tmp / 'db.sqlite3')  # a consistent copy, even with people using Osmia
+                zf.write(tmp / 'db.sqlite3', 'db.sqlite3')
+            folders = [(media_root, 'media')] + [(module_dir / l, f'modules/{l}') for l in modules]
+            for folder, prefix in folders:
+                for path, rel in _export_files(folder):
+                    stored = path.suffix.lower() in STORED_AS_IS
+                    zf.write(path, f'{prefix}/{rel}', compress_type=zipfile.ZIP_STORED if stored else zipfile.ZIP_DEFLATED)
+                    info['files'] += prefix == 'media'
+            zf.writestr(DATA_INFO, json.dumps(info, indent=2, ensure_ascii=False))
+    finally:
+        _rmtree(tmp)
+    return info
+
+
+def _data_members(zf):
+    """The zip's files, checked: no unsafe paths or links, not too many, not too big."""
+    members = []
+    for info in zf.infolist():
+        if info.is_dir():
+            continue
+        name = info.filename.replace('\\', '/')
+        parts = name.split('/')
+        if name.startswith('/') or '..' in parts or ':' in parts[0]:
+            raise PackageError(f'The zip contains an unsafe path: {info.filename}')
+        if (info.external_attr >> 16) & 0o170000 == 0o120000:
+            raise PackageError(f'The zip contains a link, which isn\'t allowed: {info.filename}')
+        if name != DATA_INFO and name != 'db.sqlite3' and parts[0] not in ('media', 'modules'):
+            raise PackageError(f'The zip contains something that isn\'t Osmia data: {info.filename}')
+        members.append((name, info))
+    if len(members) > MAX_DATA_FILES:
+        raise PackageError(f'The zip holds more than {MAX_DATA_FILES} files.')
+    if sum(i.file_size for _, i in members) > MAX_DATA_BYTES:
+        raise PackageError(f'The data is larger than {MAX_DATA_BYTES // 1024 ** 3} GB unpacked.')
+    return members
+
+
+def read_export(data):
+    """Check an Osmia data export (a path or a file) and return its osmia-data.json."""
+    try:
+        zf = zipfile.ZipFile(data)
+    except zipfile.BadZipFile:
+        raise PackageError('That is not a .zip file.')
+    with zf:
+        if DATA_INFO not in zf.namelist():
+            raise PackageError(f'This is not an Osmia data export (it has no {DATA_INFO}). '
+                               'Make one with "Export all data" on the Modules page of the other Osmia.')
+        names = {n for n, _ in _data_members(zf)}
+        try:
+            info = json.loads(zf.read(DATA_INFO).decode('utf-8'))
+        except ValueError as exc:
+            raise PackageError(f'{DATA_INFO} is not valid JSON: {exc}')
+        if not isinstance(info, dict) or info.get('format') != DATA_FORMAT or not isinstance(info.get('modules'), dict):
+            raise PackageError('This data export was made by a version of Osmia that this one can\'t read.')
+        if parse_version(info.get('osmia')) > parse_version(OSMIA_VERSION):
+            raise PackageError(f'The data comes from Osmia {info["osmia"]}; this is the older Osmia {OSMIA_VERSION}. '
+                               'Update this Osmia first.')
+        if 'db.sqlite3' not in names:
+            raise PackageError('The export has no database (db.sqlite3).')
+        for label, entry in info['modules'].items():
+            if f'modules/{label}/manifest.json' not in names:
+                raise PackageError(f'The export lists the module "{label}" but doesn\'t contain it.')
+            try:
+                manifest = check_manifest(json.loads(zf.read(f'modules/{label}/manifest.json').decode('utf-8-sig')), label)
+            except ValueError as exc:
+                raise PackageError(f'manifest.json of {label} is not valid JSON: {exc}')
+            entry.update(manifest)
+        problems = _broken_dependencies(info['modules'])
+        if problems:
+            raise PackageError(' '.join(problems))
+        return info
+
+
+def extract_export(data, dest):
+    """Unpack a checked data export into the folder ``dest``."""
+    dest = Path(dest)
+    total = 0
+    with zipfile.ZipFile(data) as zf:
+        for name, member in _data_members(zf):
+            target = dest / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(member) as src, open(target, 'wb') as out:
+                while chunk := src.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > MAX_DATA_BYTES:  # sizes in a zip can lie
+                        raise PackageError('The data is larger than allowed unpacked.')
+                    out.write(chunk)
 
 
 # -- Applying the queue (before Django starts) ------------------------------------
@@ -448,7 +600,36 @@ def _describe(op, installed):
         'disable': lambda: f'Disable {title}',
         'uninstall': lambda: f'Uninstall {title}' + (' and delete its data' if op.get('delete_data') else ''),
         'rollback': lambda: f'Roll back {title}',
+        'import': lambda: f'Replace all data with {op.get("source") or "an export"}',
     }[op['op']]()
+
+
+def _apply_import(store, op, mods, journal, log, stamp):
+    """Swap in an unpacked data export: its database, uploaded files and modules.
+    What was here is kept (previous/before-import-*, backups/media-before-import-*)."""
+    src = store.root / op['staging']
+    info = _read_json(src / DATA_INFO, None)
+    if not info:
+        raise PackageError('The unpacked export is missing.')
+    if store.modules_dir.exists():
+        journal.move(store.modules_dir, store.previous_dir / f'before-import-{stamp}')
+    if (src / 'modules').exists():
+        journal.move(src / 'modules', store.modules_dir)
+    mods.clear()
+    mods.update({label: {**entry, 'enabled': entry.get('enabled', True), 'installed_at': _now(), 'previous': []}
+                 for label, entry in info['modules'].items()})
+    log.append('Modules: ' + (', '.join(f'{e["title"]} {e["version"]}' for e in mods.values()) or 'none'))
+    media = Path(op['media_root'])
+    if media.exists():
+        kept = store.backups_dir / f'media-before-import-{stamp}'
+        journal.move(media, kept)
+        log.append(f'The uploaded files that were here are kept in backups/{kept.name}')
+    if (src / 'media').exists():
+        journal.move(src / 'media', media)
+    log.append(f'Uploaded files: {info.get("files", 0)}')
+    store.replace_db(src / 'db.sqlite3')
+    log.append(f'Database replaced with the one exported from Osmia {info.get("osmia")} '
+               f'at {info.get("exported_at", "?")} by {info.get("exported_by") or "?"}')
 
 
 def apply_pending(store):
@@ -471,6 +652,9 @@ def apply_pending(store):
             log.append(f'Database backed up to backups/{backup}')
         for op, desc in zip(job['ops'], descriptions):
             log.append('— ' + desc)
+            if op['op'] == 'import':
+                _apply_import(store, op, mods, journal, log, f'{datetime.now():%Y%m%d-%H%M%S}')
+                continue
             label = op['label']
             current = store.modules_dir / label
             if op['op'] == 'install':
@@ -552,6 +736,23 @@ def _print_safely(text):
     print(text.encode(enc, 'replace').decode(enc, 'replace'), file=sys.stderr, flush=True)
 
 
+def _migrations_fingerprint(store):
+    """A short hash of every migration file Osmia would run, so new migrations
+    (e.g. after a git pull) are noticed and applied at the next start."""
+    import hashlib
+    labels = store.enabled_labels()
+    if os.environ.get('OSMIA_DEV_MODULES'):
+        folders = [BUNDLED_DIR / l for l in bundled_manifests()]
+    else:
+        folders = [store.modules_dir / l for l in labels]
+    names = []
+    for folder in [BASE_DIR / 'core', BASE_DIR / 'users'] + folders:
+        mig = folder / 'migrations'
+        if mig.is_dir():
+            names += sorted(f'{folder.name}/{p.name}' for p in mig.glob('[0-9]*.py'))
+    return hashlib.sha1('\n'.join(names).encode()).hexdigest()[:16]
+
+
 def boot(store):
     """Called once per start, before Django loads: apply a queued change and
     bring the database up to date. Safe to call from several processes."""
@@ -568,9 +769,9 @@ def boot(store):
     os.close(fd)
     try:
         result = apply_pending(store)
-        marker = {'osmia': OSMIA_VERSION, 'modules': store.enabled_labels()}
+        marker = {'osmia': OSMIA_VERSION, 'modules': store.enabled_labels(), 'migrations': _migrations_fingerprint(store)}
         if result is None and (not store.db_file.exists() or _read_json(store.booted_file, None) != marker):
-            # First start, a new Osmia version, or modules changed by hand: migrate.
+            # First start, a new Osmia version, new migrations or modules changed by hand: migrate.
             log = []
             if not _manage(['migrate', '--noinput'], log):
                 _print_safely('\n'.join(log))

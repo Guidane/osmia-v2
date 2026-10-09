@@ -7,6 +7,7 @@ on the way back up, before Django loads, and undone completely if it fails.
 """
 import os
 import shutil
+import tempfile
 import threading
 from importlib.util import find_spec
 from pathlib import Path
@@ -14,8 +15,9 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from osmia import addons
@@ -328,6 +330,78 @@ def module_download(request, label):
     response = HttpResponse(addons.zip_folder(folder), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="{label}-{version}.zip"'
     return response
+
+
+# -- Moving all the data to another Osmia ------------------------------------------
+
+def _export_source():
+    """({label: entry}, folder holding them) of the modules an export takes along."""
+    if can_change():
+        return _store().installed(), _store().modules_dir
+    bundled = addons.bundled_manifests()  # running from source: the running modules, as installed ones
+    return {l: {**bundled[l], 'enabled': True} for l in settings.OSMIA_MODULES}, addons.BUNDLED_DIR
+
+
+@superuser_required
+def data_export(request):
+    """What an export holds and how much space it needs, before downloading it."""
+    modules, module_dir = _export_source()
+    sizes = addons.export_sizes(_store(), settings.MEDIA_ROOT, modules, module_dir)
+    # Here: the zip is built in the temp folder (at most the total, less once compressed) next to a copy of the database.
+    need_here = sizes['total'] + sizes['database']
+    free_here = shutil.disk_usage(tempfile.gettempdir()).free
+    return render(request, 'core/data_export.html', {
+        'sizes': sizes, 'modules': [e for _, e in sorted(modules.items(), key=lambda i: i[1].get('sequence', 100))],
+        'need_here': need_here, 'free_here': free_here, 'enough_here': free_here > need_here,
+        # There: the uploaded zip and the unpacked data (each up to the total), plus a backup of its own database.
+        'need_there': 2 * sizes['total'], 'temp_dir': tempfile.gettempdir(),
+    })
+
+
+@superuser_required
+def data_export_download(request):
+    """Everything this Osmia holds (database, uploaded files, modules) as one .zip,
+    to import on another Osmia, e.g. from a test server to the real one."""
+    modules, module_dir = _export_source()
+    out = tempfile.TemporaryFile()  # gone once the download is sent
+    addons.export_data(_store(), out, settings.MEDIA_ROOT, modules, module_dir, user=request.user.username)
+    out.seek(0)
+    return FileResponse(out, as_attachment=True, content_type='application/zip',
+                        filename=f'osmia-data-{timezone.localtime():%Y%m%d-%H%M}.zip')
+
+
+@superuser_required
+@require_POST
+def data_import(request):
+    """Queue replacing all of this Osmia's data with an export from another one."""
+    if not _changes_allowed(request):
+        return redirect('core:modules')
+    uploaded = request.FILES.get('export')
+    if uploaded is None:
+        messages.error(request, 'Pick an Osmia data export (.zip) to import.')
+        return redirect('core:modules')
+    if request.POST.get('confirm') != '1':
+        messages.error(request, 'Tick the box to confirm that all data here is replaced.')
+        return redirect('core:modules')
+    staging = None
+    try:
+        info = addons.read_export(uploaded)
+        missing = sorted({r for m in info['modules'].values() for r in addons.missing_requirements(m)})
+        if missing:
+            raise addons.PackageError(f'The modules in this export need Python packages that aren\'t installed: '
+                                      f'{", ".join(missing)}. Install them on the server (pip install ...) first.')
+        staging = _store().new_staging()
+        uploaded.seek(0)
+        addons.extract_export(uploaded, staging)
+        source = f'the data exported by {info.get("exported_by") or "?"} at {str(info.get("exported_at", ""))[:16].replace("T", " ")}'
+        op = {'op': 'import', 'label': '', 'title': 'all data', 'source': source,
+              'staging': staging.relative_to(_store().root).as_posix(), 'media_root': str(settings.MEDIA_ROOT)}
+        return queue_change(request, [op])
+    except addons.PackageError as exc:
+        if staging is not None:
+            addons._rmtree(staging)
+        messages.error(request, f'{uploaded.name}: {exc}')
+        return redirect('core:modules')
 
 
 @superuser_required
