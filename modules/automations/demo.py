@@ -1,11 +1,21 @@
 from django.apps import apps
+from django.urls import reverse
 
 from users.models import User
 
-from .models import Rule
+from .models import Notification, Rule
 
 
 def load():
+    # Something in the administrator's notifications (the 🔔 in the top bar) to start with.
+    admin = User.objects.filter(username='admin').first()
+    if admin and not Notification.objects.filter(user=admin).exists():
+        Notification.objects.create(user=admin, message='Welcome to Osmia. Rules under Automations send notifications like this one.',
+                                    url=reverse('automations:list'))
+    load_rules()
+
+
+def load_rules():
     """Two rules that chain: placing an order creates the check-in tasks, and
     finishing them receives the order into stock."""
     if Rule.objects.exists() or not (apps.is_installed('orders') and apps.is_installed('tasks')):

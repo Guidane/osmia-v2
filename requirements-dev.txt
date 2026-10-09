@@ -1,0 +1,3 @@
+-r requirements.txt
+# Browser tests (core/test_browser.py); they use Edge or Chrome if installed, else run "playwright install chromium".
+playwright>=1.40

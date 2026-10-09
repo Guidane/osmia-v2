@@ -1,7 +1,7 @@
 {
   "label": "automations",
   "title": "Automations",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "osmia": ">=2.0",
   "description": "Rules: when something happens (an order is placed), do things (create tasks, notify people).",
   "icon": "⚡",

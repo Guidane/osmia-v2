@@ -81,7 +81,7 @@ class HarnessApiTests(HarnessTestCase):
         self.assertContains(self.client.get(reverse('harness:list')), '1 / 2')
 
         self.client.delete(f'{self.api}/projects/{p.pk}')
-        self.assertFalse(HarnessProject.objects.exists())
+        self.assertFalse(HarnessProject.objects.filter(pk=p.pk).exists())
 
     def test_signal_rules_and_users(self):
         self.post_json('/signal-rules', {'pairs': [['PWR', 'PWR'], ['rx', 'TX'], ['RX', 'tx'], ['', 'GND']]})

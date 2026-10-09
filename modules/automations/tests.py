@@ -88,7 +88,7 @@ class ChainTests(AutomationTestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.PLACED)
         self.assertFalse(Task.objects.filter(batch__isnull=False).exists())
-        self.assertFalse(Notification.objects.exists())
+        self.assertFalse(Notification.objects.filter(rule__isnull=False).exists())  # none from the rules
         run = Run.objects.get(rule=self.check_in)
         self.assertEqual(run.status, Run.Status.FAILED)
         self.assertIn('undone', run.log)
