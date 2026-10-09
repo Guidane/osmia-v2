@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "core/_field.html" %}{% endfor %}
+    <p class="muted">The project gets a budget of its own, named after it and in its department. Tasks in the project and
+      orders placed on that budget count as the project's spending.</p>
+    <div class="actions">
+      <button class="btn primary">Save</button>
+      <a class="btn" href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'projects:list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

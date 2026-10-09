@@ -1,0 +1,14 @@
+{
+  "label": "projects",
+  "title": "Projects",
+  "version": "1.0.0",
+  "osmia": ">=2.0",
+  "description": "Ties the work together: each project has its own budget, a department, a team and tasks, and shows the orders and materials that went into it.",
+  "icon": "📁",
+  "sequence": 12,
+  "depends": ["users", "departments", "tasks", "budgets"],
+  "menu": [
+    {"label": "Projects", "url": "projects:list"},
+    {"label": "New project", "url": "projects:create"}
+  ]
+}

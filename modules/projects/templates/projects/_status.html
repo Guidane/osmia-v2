@@ -1,0 +1,1 @@
+<span class="badge {% if p.status == 'active' %}in_progress{% elif p.status == 'done' %}done{% elif p.status == 'on_hold' %}warn{% elif p.status == 'cancelled' %}off{% else %}todo{% endif %}">{{ p.get_status_display }}</span>

@@ -1,0 +1,13 @@
+{% if project %}
+  <p><a href="{{ project.get_absolute_url }}"><strong>{{ project }}</strong></a> {% include "projects/_status.html" with p=project %}</p>
+  {% if project.budget %}<p class="muted">Its costs are charged to the project's budget.</p>{% endif %}
+{% else %}
+  <p class="muted">Not part of a project.</p>
+{% endif %}
+{% if can_change %}
+  <form method="post" action="{% url 'projects:set_task_project' task.pk %}" class="inline-form">
+    {% csrf_token %}
+    {{ form.project }}
+    <button class="btn small">{% if project %}Move{% else %}Add to project{% endif %}</button>
+  </form>
+{% endif %}

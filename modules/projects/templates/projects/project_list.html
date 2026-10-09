@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="toolbar">
+  <h1>Projects</h1>
+  <form method="get" class="inline-form">
+    <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Search…" aria-label="Search projects">
+    <select name="status" onchange="this.form.submit()">
+      <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+      <option value="all" {% if status == 'all' %}selected{% endif %}>All statuses</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="department" onchange="this.form.submit()">
+      <option value="">All departments</option>
+      {% for d in departments %}<option value="{{ d.pk }}" {% if request.GET.department == d.pk|stringformat:"s" %}selected{% endif %}>{{ d }}</option>{% endfor %}
+    </select>
+  </form>
+  {% if perms.projects.add_project %}<a class="btn primary" href="{% url 'projects:create' %}">New project</a>{% endif %}
+</div>
+<table class="list">
+  <thead><tr><th>Project</th><th>Status</th><th>Department</th><th>Manager</th><th>Dates</th><th>Tasks</th><th>Budget</th></tr></thead>
+  <tbody>
+  {% for p in object_list %}
+    <tr class="{% if p.budget.over %}warn{% endif %}">
+      <td><a href="{{ p.get_absolute_url }}"><strong>{{ p.code }}</strong> {{ p.name }}</a></td>
+      <td>{% include "projects/_status.html" %}</td>
+      <td>{{ p.department|default:"—" }}</td>
+      <td>{{ p.manager|default:"—" }}</td>
+      <td class="muted">{% if p.start_date or p.end_date %}{{ p.start_date|date|default:"…" }} – {{ p.end_date|date|default:"…" }}{% else %}—{% endif %}</td>
+      <td>{% if p.tasks_total %}<span class="meter" title="{{ p.progress }}% done"><span style="width: {{ p.progress }}%"></span></span>
+        <small class="muted">{{ p.tasks_done }} / {{ p.tasks_total }}</small>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% include "projects/_budget_cell.html" %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="muted">No projects{% if status == 'open' %} open{% endif %}.{% if perms.projects.add_project %} <a href="{% url 'projects:create' %}">Start one</a>.{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

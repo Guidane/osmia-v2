@@ -1,0 +1,2 @@
+{% load humanize %}{% if p.budget %}<span title="{{ p.budget.spent|floatformat:2|intcomma }} of {{ p.budget.amount|floatformat:2|intcomma }} spent">{% include "budgets/_bar.html" with b=p.budget %}</span>
+  <small class="muted">{{ p.budget.spent|floatformat:0|intcomma }} / {{ p.budget.amount|floatformat:0|intcomma }}</small>{% else %}<span class="muted">No budget</span>{% endif %}

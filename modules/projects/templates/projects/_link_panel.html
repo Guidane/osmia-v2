@@ -1,0 +1,6 @@
+{% load humanize %}
+<p>{{ what }} <a href="{{ project.get_absolute_url }}"><strong>{{ project }}</strong></a> {% include "projects/_status.html" with p=project %}</p>
+{% if project.budget %}
+  <p class="muted">Project budget: {{ project.budget.spent|floatformat:2|intcomma }} of {{ project.budget.amount|floatformat:2|intcomma }} spent.</p>
+  {% include "budgets/_bar.html" with b=project.budget %}
+{% endif %}

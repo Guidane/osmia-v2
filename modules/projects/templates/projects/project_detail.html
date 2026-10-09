@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load humanize osmia_images %}
+{% block content %}
+{% with p=project b=project.budget %}
+<div class="toolbar">
+  <h1><span class="muted">{{ p.code }}</span> {{ p.name }} {% include "projects/_status.html" %}
+    {% if b.over %}<span class="badge high">Over budget</span>{% endif %}</h1>
+  {% if can_edit %}<a class="btn" href="{% url 'projects:edit' p.pk %}">Edit</a>{% endif %}
+</div>
+
+<section class="widgets">
+  {% if b %}
+    <a class="widget" href="{{ b.get_absolute_url }}"><span class="widget-value">{{ b.amount|floatformat:2|intcomma }}</span><span class="widget-title">Budget</span></a>
+    <div class="widget {% if b.over %}warn{% endif %}"><span class="widget-value">{{ b.spent|floatformat:2|intcomma }}</span><span class="widget-title">Spent ({{ b.used_pct }}%)</span></div>
+    <div class="widget {% if b.over %}warn{% else %}ok{% endif %}"><span class="widget-value">{{ b.remaining|floatformat:2|intcomma }}</span><span class="widget-title">Remaining</span></div>
+  {% else %}
+    <div class="widget warn"><span class="widget-value">—</span><span class="widget-title">No budget{% if can_edit %}: <a href="{% url 'projects:edit' p.pk %}">set one</a>{% endif %}</span></div>
+  {% endif %}
+  <div class="widget"><span class="widget-value">{{ p.tasks_done }} / {{ p.tasks_total }}</span><span class="widget-title">Tasks done ({{ p.progress }}%)</span></div>
+  {% if orders is not None %}<div class="widget"><span class="widget-value">{{ orders_open }}</span><span class="widget-title">Open orders</span></div>{% endif %}
+</section>
+
+<div class="grid-2">
+  <div>
+    <section class="card panel">
+      <h2>Tasks</h2>
+      <table class="list">
+        <thead><tr><th>Task</th><th>Status</th><th>Assignee</th><th>Due</th><th class="num">Cost</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for t in tasks %}
+          <tr>
+            <td><a href="{{ t.get_absolute_url }}">{{ t.title }}</a>
+              {% if t.off_budget %}<br><small class="overdue" title="Its costs don't count towards this project">Charged to {{ t.budget_link.budget|default:"no budget" }}</small>{% endif %}</td>
+            <td><span class="badge {{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td>{{ t.assignee|default:"—" }}</td>
+            <td>{{ t.due_date|date|default:"—" }}</td>
+            <td class="num">{{ t.cost_total|floatformat:2|intcomma }}</td>
+            {% if can_edit %}<td><form method="post" action="{% url 'projects:remove_task' p.pk t.pk %}">{% csrf_token %}
+              <button class="btn small" title="Take it out of the project (the task is kept)">✕</button></form></td>{% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">No tasks yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if can_edit %}
+        <form method="post" action="{% url 'projects:add_task' p.pk %}" class="inline-form" style="flex-wrap: wrap">
+          {% csrf_token %}
+          {{ add_form.task }} {{ add_form.title }} {{ add_form.assignee }} {{ add_form.due_date }}
+          <button class="btn small primary">Add task</button>
+        </form>
+        <p class="muted">Tasks in the project are charged to its budget, so the materials issued to them count as the project's spending.</p>
+      {% endif %}
+    </section>
+
+    {% if orders is not None %}
+    <section class="card panel">
+      <h2>Orders</h2>
+      <table class="list">
+        <thead><tr><th>Order</th><th>Supplier</th><th>Status</th><th>Budget</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for o in orders %}
+          <tr>
+            <td><a href="{{ o.get_absolute_url }}">{{ o.number }}</a></td>
+            <td>{{ o.supplier|default:"—" }}</td>
+            <td>{% include "orders/_status.html" %}</td>
+            <td>{{ o.budget.name }}</td>
+            <td class="num">{{ o.total|floatformat:2|intcomma }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">No orders yet. Orders placed on {% if b %}the budget {{ b }}{% else %}the project's budget{% endif %} (or one under it) show here.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% if materials is not None %}
+    <section class="card panel">
+      <h2>Materials from stock {% if materials %}<span class="muted">· {{ materials_cost|floatformat:2|intcomma }}</span>{% endif %}</h2>
+      <table class="list">
+        <thead><tr><th>When</th><th>Part</th><th class="num">Quantity</th><th>Task</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+        {% for m in materials %}
+          <tr>
+            <td>{{ m.created_at|date }}</td>
+            <td><a href="{{ m.part.get_absolute_url }}">{{ m.part.part_number }}</a> <span class="muted">{{ m.part.name }}</span></td>
+            <td class="num">{{ m.delta|floatformat:"-2" }} {{ m.part.unit }}</td>
+            <td><a href="{{ m.task.get_absolute_url }}">{{ m.task }}</a></td>
+            <td class="num">{{ m.cost|floatformat:2|intcomma }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">Nothing issued to the project's tasks yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% image_gallery p title="Files" empty="No files yet, e.g. drawings, quotes or the contract." %}
+    {# Panels contributed by other modules, e.g. its history #}
+    {% include "core/panels.html" %}
+  </div>
+
+  <div>
+    <section class="card">
+      <dl class="props">
+        <dt>Department</dt><dd>{% if p.department %}<a href="{{ p.department.get_absolute_url }}">{{ p.department }}</a>{% else %}—{% endif %}</dd>
+        <dt>Manager</dt><dd>{% if p.manager %}<a href="{{ p.manager.get_absolute_url }}">{{ p.manager }}</a>{% else %}—{% endif %}</dd>
+        <dt>Team</dt><dd>{% for u in p.members.all %}<a href="{{ u.get_absolute_url }}">{{ u }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+        <dt>Dates</dt><dd>{{ p.start_date|date|default:"…" }} – {{ p.end_date|date|default:"…" }}</dd>
+        <dt>Budget</dt><dd>{% if b %}<a href="{{ b.get_absolute_url }}">{{ b }}</a>{% if b.parent %}<br><small class="muted">paid from {{ b.parent }}</small>{% endif %}{% else %}—{% endif %}</dd>
+      </dl>
+      {% if p.description %}<hr>{{ p.description|linebreaks }}{% endif %}
+    </section>
+    {% if b %}
+    <section class="card panel">
+      <h2>Spent on</h2>
+      {% if by_source %}
+        <table class="list compact"><tbody>
+          {% for label, amount in by_source.items %}<tr><td>{{ label }}</td><td class="num">{{ amount|floatformat:2|intcomma }}</td></tr>{% endfor %}
+        </tbody></table>
+      {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+      {% include "budgets/_bar.html" %}
+      {% if perms.budgets.add_budget %}<p class="muted">Split the budget up with <a href="{% url 'budgets:create' %}?parent={{ b.pk }}">sub-budgets</a>; they count towards the project too.</p>{% endif %}
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

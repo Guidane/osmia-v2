@@ -1,0 +1,16 @@
+{% if projects %}
+<table class="list">
+  <thead><tr><th>Project</th><th>Status</th><th>Manager</th><th>Tasks</th><th>Budget</th></tr></thead>
+  <tbody>
+  {% for p in projects %}
+    <tr class="{% if p.budget.over %}warn{% endif %}">
+      <td><a href="{{ p.get_absolute_url }}">{{ p }}</a></td>
+      <td>{% include "projects/_status.html" %}</td>
+      <td>{{ p.manager|default:"—" }}</td>
+      <td>{{ p.tasks_done }} / {{ p.tasks_total }}</td>
+      <td>{% include "projects/_budget_cell.html" %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">{{ empty }}</p>{% endif %}
